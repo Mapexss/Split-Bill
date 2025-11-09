@@ -19,17 +19,16 @@ export async function verifyPassword(
 // Register new user
 export async function registerUser(
     username: string,
-    email: string,
     password: string
 ): Promise<{ success: boolean; error?: string; userId?: number }> {
     try {
         // Check if user already exists
         const existingUser = db
-            .query("SELECT id FROM users WHERE username = ? OR email = ?")
-            .get(username, email);
+            .query("SELECT id FROM users WHERE username = ?")
+            .get(username);
 
         if (existingUser) {
-            return { success: false, error: "Username or email already exists" };
+            return { success: false, error: "Nome de usuário já existe" };
         }
 
         // Hash password
@@ -37,13 +36,13 @@ export async function registerUser(
 
         // Insert user
         const result = db
-            .query("INSERT INTO users (username, email, password) VALUES (?, ?, ?)")
-            .run(username, email, hashedPassword);
+            .query("INSERT INTO users (username, password) VALUES (?, ?)")
+            .run(username, hashedPassword);
 
         return { success: true, userId: Number(result.lastInsertRowid) };
     } catch (error) {
         console.error("Registration error:", error);
-        return { success: false, error: "Failed to register user" };
+        return { success: false, error: "Falha ao registrar usuário" };
     }
 }
 
@@ -59,20 +58,20 @@ export async function loginUser(
             .get(username) as { id: number; password: string } | null;
 
         if (!user) {
-            return { success: false, error: "Invalid username or password" };
+            return { success: false, error: "Usuário ou senha inválidos" };
         }
 
         // Verify password
         const isValid = await verifyPassword(password, user.password);
 
         if (!isValid) {
-            return { success: false, error: "Invalid username or password" };
+            return { success: false, error: "Usuário ou senha inválidos" };
         }
 
         return { success: true, userId: user.id };
     } catch (error) {
         console.error("Login error:", error);
-        return { success: false, error: "Failed to login" };
+        return { success: false, error: "Falha ao fazer login" };
     }
 }
 

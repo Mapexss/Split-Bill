@@ -13,7 +13,6 @@ import { useNavigate } from "react-router-dom";
 interface User {
     authenticated: boolean;
     username?: string;
-    email?: string;
 }
 
 export function Dashboard() {
@@ -88,17 +87,25 @@ export function Dashboard() {
                     <CardHeader>
                         <CardTitle className="text-2xl">Bem-vindo ao Dividir Conta!</CardTitle>
                         <CardDescription>
-                            Você está logado com sucesso.
+                            Gerencie suas despesas compartilhadas de forma fácil e organizada
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="space-y-2">
-                            <p className="text-sm text-muted-foreground">
-                                <span className="font-medium">Usuário:</span> {user?.username}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                                <span className="font-medium">E-mail:</span> {user?.email}
-                            </p>
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <p className="text-sm text-muted-foreground">
+                                    <span className="font-medium">Usuário:</span> {user?.username}
+                                </p>
+                            </div>
+
+                            <div className="pt-4 border-t">
+                                <Button
+                                    onClick={() => navigate("/grupos")}
+                                    className="w-full"
+                                >
+                                    Ver Meus Grupos
+                                </Button>
+                            </div>
                         </div>
                     </CardContent>
                 </Card>

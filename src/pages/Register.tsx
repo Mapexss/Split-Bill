@@ -14,7 +14,6 @@ import { Link, useNavigate } from "react-router-dom";
 export function Register() {
     const navigate = useNavigate();
     const [username, setUsername] = useState("");
-    const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
     const [error, setError] = useState("");
@@ -30,11 +29,6 @@ export function Register() {
             return;
         }
 
-        if (password.length < 6) {
-            setError("A senha deve ter pelo menos 6 caracteres");
-            return;
-        }
-
         setLoading(true);
 
         try {
@@ -43,7 +37,7 @@ export function Register() {
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({ username, email, password }),
+                body: JSON.stringify({ username, password }),
             });
 
             const data = await response.json();
@@ -87,28 +81,14 @@ export function Register() {
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="email">E-mail</Label>
-                            <Input
-                                id="email"
-                                type="email"
-                                placeholder="Digite seu e-mail"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                required
-                                disabled={loading}
-                            />
-                        </div>
-
-                        <div className="space-y-2">
                             <Label htmlFor="password">Senha</Label>
                             <Input
                                 id="password"
                                 type="password"
-                                placeholder="Digite sua senha (mín. 6 caracteres)"
+                                placeholder="Digite sua senha"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
-                                minLength={6}
                                 disabled={loading}
                             />
                         </div>

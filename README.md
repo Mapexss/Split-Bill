@@ -18,63 +18,103 @@ bun install
 
 ## 🛠️ Desenvolvimento
 
-### Primeira vez (gerar arquivos CSS/JS):
+### Modo desenvolvimento com hot reload completo:
 
 ```bash
-# Gerar CSS do Tailwind
-bun run build:css
-
-# Gerar bundle React
-bun run build:client
-```
-
-### Modo desenvolvimento:
-
-```bash
-# Inicia o servidor com hot reload
 bun dev
 ```
 
-**Importante:** O `bun dev` NÃO compila automaticamente:
-- ❌ Tailwind CSS não é recompilado automaticamente
-- ❌ React bundle não é reconstruído automaticamente
+Este único comando inicia **3 processos em paralelo** com watch mode:
+- 🔵 **SERVER** (cyan): Backend com hot reload na porta 3000
+- 🟣 **CSS** (magenta): Tailwind CSS com auto-rebuild
+- 🟢 **CLIENT** (verde): React bundle com auto-rebuild
 
-### Desenvolvimento com auto-rebuild:
+**Agora tudo atualiza automaticamente!** ✨
+- Edite arquivos `.ts/.tsx` do backend → servidor reinicia
+- Edite arquivos `.tsx` do React → bundle recompila
+- Edite `styles.css` ou classes Tailwind → CSS recompila
+
+Para parar todos os processos: `Ctrl+C`
+
+### Build para produção:
 
 ```bash
-# Terminal 1: Servidor
-bun dev
-
-# Terminal 2: Watch CSS (recompila ao salvar arquivos)
-bun run watch:css
-
-# Nota: Para mudanças no React, rode: bun run build:client
+bun run build
 ```
+
+Gera todos os arquivos otimizados (CSS + React + Server)
 
 ## 📜 Scripts Disponíveis
 
 ```bash
-bun dev              # Servidor dev com hot reload
-bun run build:css    # Compila Tailwind CSS
-bun run build:client # Compila React bundle
-bun run build:server # Compila servidor
+# Desenvolvimento
+bun dev              # Hot reload completo (backend + CSS + React)
+bun run dev:server   # Apenas backend com hot reload
+bun run dev:css      # Apenas CSS watch mode
+bun run dev:client   # Apenas React watch mode
+
+# Build
 bun run build        # Build completo (CSS + React + Server)
-bun run watch:css    # Watch mode do CSS
-bun start            # Produção
+bun run build:css    # Build apenas CSS
+bun run build:client # Build apenas React bundle
+bun run build:server # Build apenas servidor
+
+# Produção
+bun start            # Roda versão de produção
 ```
 
 ## 🌐 Acessar
 
 Após rodar `bun dev`:
-- **URL**: http://localhost:3000
+- **Início**: http://localhost:3000
 - **Registro**: http://localhost:3000/registrar
 - **Login**: http://localhost:3000/entrar
+- **Grupos**: http://localhost:3000/grupos
+- **Dashboard**: http://localhost:3000/painel
 
-## ✅ Funcionalidades Atuais
 
+### Autenticação
 - [x] Registro de usuário
 - [x] Login de usuário
-- [x] Autenticação com sessões
+- [x] Autenticação com sessões seguras
 - [x] Dashboard protegido
+
+### Despesas
+- [x] Adicionar despesas
+- [x] Dividir despesas entre membros
+- [x] Divisão customizada ou igual
+- [x] Selecionar quais membros participam da despesa
+- [x] Remover membros da divisão (checkbox)
+- [x] Categorização de despesas
+- [x] Visualizar histórico de despesas
+- [x] Expandir despesas para ver divisão detalhada
+- [x] Ver quanto cada pessoa deve/recebeu em cada despesa
+- [x] Editar despesas existentes
+- [x] Histórico de mudanças em despesas (audit log)
+- [x] Ver quem alterou, quando e o que foi modificado
+
+### Cálculos
+- [x] Calcular balanços (quem deve/recebe)
+- [x] Algoritmo de simplificação de dívidas
+- [x] Mostrar quem deve pagar para quem
+
+### Liquidações
+- [x] Registrar pagamentos entre membros
+- [x] Atualizar balanços automaticamente
+- [x] Histórico de transações completo
+
+### Auditoria
+- [x] Sistema de histórico de mudanças
+- [x] Registro automático de todas as edições
+- [x] Rastreamento de:
+  - Quem fez a alteração
+  - Quando foi alterado
+  - Valor anterior e novo
+  - Mudanças na divisão entre membros
+
+### Interface
 - [x] Interface em português
 - [x] UI moderna com shadcn/ui
+- [x] Responsivo e acessível
+- [x] Busca de usuários com normalização de texto
+- [x] Gradientes e animações suaves

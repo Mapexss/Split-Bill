@@ -4,12 +4,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun run --hot src/server.ts",
+    "dev": "concurrently -n SERVER,CSS,CLIENT -c cyan,magenta,green \"bun run dev:server\" \"bun run dev:css\" \"bun run dev:client\"",
+    "dev:server": "bun run --hot src/server.ts",
+    "dev:css": "bunx tailwindcss -i ./src/styles.css -o ./public/styles.css --watch",
+    "dev:client": "bun build src/client.tsx --outdir=public --sourcemap=external --target=browser --watch",
     "build:css": "bunx tailwindcss -i ./src/styles.css -o ./public/styles.css --minify",
     "build:client": "bun build src/client.tsx --outdir=public --sourcemap=external --target=browser --minify",
     "build:server": "bun build src/server.ts --outdir=dist --target=bun",
     "build": "bun run build:css && bun run build:client && bun run build:server",
-    "watch:css": "bunx tailwindcss -i ./src/styles.css -o ./public/styles.css --watch",
     "start": "NODE_ENV=production bun dist/server.js"
   },
   "dependencies": {
@@ -29,9 +31,10 @@
     "@types/bun": "latest",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
-    "tailwindcss": "^3.4.0",
     "autoprefixer": "^10.4.16",
+    "concurrently": "^9.2.1",
     "postcss": "^8.4.32",
+    "tailwindcss": "^3.4.0",
     "tailwindcss-animate": "^1.0.7"
   }
 }

@@ -51,10 +51,10 @@ export function Login() {
             <Card className="w-full max-w-md">
                 <CardHeader className="space-y-1">
                     <CardTitle className="text-3xl font-bold text-center">
-                        Bem-vindo de Volta
+                        Bem-vindo!
                     </CardTitle>
                     <CardDescription className="text-center">
-                        Entre na sua conta Dividir Conta
+                        Entrar
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
