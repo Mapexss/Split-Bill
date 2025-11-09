@@ -32,10 +32,6 @@ const indexHtml = await Bun.file("public/index.html").text();
 
 const app = new Elysia()
     .use(cookie())
-    // Static files
-    .get("/styles.css", () => Bun.file("public/styles.css"))
-    .get("/client.js", () => Bun.file("public/client.js"))
-    .get("/client.js.map", () => Bun.file("public/client.js.map"))
     // API endpoints
     .post("/api/register", async ({ body, cookie }) => {
         const { username, password } = body as {
@@ -508,6 +504,30 @@ const app = new Elysia()
 
         const transactions = getGroupTransactions(groupId);
         return { success: true, transactions };
+    })
+    // Generic static file handler - serves all files from public directory
+    .get("*", async ({ path, set }) => {
+        // Only handle static files (not SPA routes)
+        if (path.startsWith("/api/") ||
+            path === "/" ||
+            path === "/entrar" ||
+            path === "/registrar" ||
+            path === "/painel" ||
+            path === "/grupos" ||
+            path.startsWith("/grupos/")) {
+            return; // Skip to next handler
+        }
+
+        // Try to serve file from public directory
+        const filePath = `public${path}`;
+        const file = Bun.file(filePath);
+
+        if (await file.exists()) {
+            return file;
+        }
+
+        // File not found - skip to next handler
+        return;
     })
     // Serve React app for SPA routes (not for static files)
     .get("/entrar", ({ set }) => {
