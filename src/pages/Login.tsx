@@ -8,11 +8,14 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useTheme } from "@/contexts/ThemeContext";
+import { Moon, Receipt, Sun } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 export function Login() {
     const navigate = useNavigate();
+    const { theme, toggleTheme } = useTheme();
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
@@ -47,14 +50,30 @@ export function Login() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-blue-50 to-indigo-100">
-            <Card className="w-full max-w-md">
-                <CardHeader className="space-y-1">
+        <div className="min-h-screen flex items-center justify-center px-4 bg-background relative">
+            {/* Theme Toggle - Top Right */}
+            <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleTheme}
+                className="absolute top-4 right-4 rounded-full"
+                aria-label="Alternar tema"
+            >
+                {theme === "light" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+            </Button>
+
+            <Card className="w-full max-w-md shadow-lg">
+                <CardHeader className="space-y-4 pb-4">
+                    <div className="flex justify-center">
+                        <div className="p-3 bg-primary/10 rounded-full">
+                            <Receipt className="h-10 w-10 text-primary" />
+                        </div>
+                    </div>
                     <CardTitle className="text-3xl font-bold text-center">
-                        Bem-vindo!
+                        Dividir Conta
                     </CardTitle>
-                    <CardDescription className="text-center">
-                        Entrar
+                    <CardDescription className="text-center text-base">
+                        Entre para gerenciar suas despesas compartilhadas
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -69,6 +88,7 @@ export function Login() {
                                 onChange={(e) => setUsername(e.target.value)}
                                 required
                                 disabled={loading}
+                                className="h-11"
                             />
                         </div>
 
@@ -82,6 +102,7 @@ export function Login() {
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
                                 disabled={loading}
+                                className="h-11"
                             />
                         </div>
 
@@ -91,17 +112,19 @@ export function Login() {
                             </div>
                         )}
 
-                        <Button type="submit" className="w-full" disabled={loading}>
+                        <Button type="submit" className="w-full h-11" disabled={loading}>
                             {loading ? "Entrando..." : "Entrar"}
                         </Button>
                     </form>
 
-                    <p className="text-center text-sm text-muted-foreground mt-6">
-                        Não tem uma conta?{" "}
-                        <Link to="/registrar" className="text-primary hover:underline font-medium">
-                            Cadastre-se aqui
-                        </Link>
-                    </p>
+                    <div className="mt-6 pt-4 border-t">
+                        <p className="text-center text-sm text-muted-foreground">
+                            Não tem uma conta?{" "}
+                            <Link to="/registrar" className="text-primary hover:underline font-medium">
+                                Cadastre-se aqui
+                            </Link>
+                        </p>
+                    </div>
                 </CardContent>
             </Card>
         </div>

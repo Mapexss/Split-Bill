@@ -1,3 +1,4 @@
+import { Layout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import {
     Card,
@@ -6,111 +7,150 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
-import { LogOut } from "lucide-react";
-import { useEffect, useState } from "react";
+import { ArrowRight, Receipt, TrendingUp, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-
-interface User {
-    authenticated: boolean;
-    username?: string;
-}
 
 export function Dashboard() {
     const navigate = useNavigate();
-    const [user, setUser] = useState<User | null>(null);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        checkAuth();
-    }, []);
-
-    const checkAuth = async () => {
-        try {
-            const response = await fetch("/api/me");
-            const data = await response.json();
-
-            if (!data.authenticated) {
-                navigate("/entrar");
-            } else {
-                setUser(data);
-            }
-        } catch (error) {
-            navigate("/entrar");
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleLogout = async () => {
-        try {
-            await fetch("/api/logout", { method: "POST" });
-            navigate("/entrar");
-        } catch (error) {
-            console.error("Erro ao sair:", error);
-        }
-    };
-
-    if (loading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center">
-                <p className="text-muted-foreground">Carregando...</p>
-            </div>
-        );
-    }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-            <nav className="bg-white shadow-sm border-b">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between h-16 items-center">
-                        <h1 className="text-2xl font-bold text-primary">Dividir Conta</h1>
-                        <div className="flex items-center space-x-4">
-                            <span className="text-sm text-muted-foreground">
-                                Olá, <span className="font-medium text-foreground">{user?.username}</span>
-                            </span>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={handleLogout}
-                                className="gap-2"
-                            >
-                                <LogOut className="h-4 w-4" />
-                                Sair
-                            </Button>
-                        </div>
-                    </div>
+        <Layout>
+            <div className="space-y-8">
+                {/* Hero Section */}
+                <div className="text-center space-y-4 py-8">
+                    <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
+                        Bem-vindo ao Dividir Conta!
+                    </h1>
+                    <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
+                        Gerencie suas despesas compartilhadas de forma fácil, organizada e transparente
+                    </p>
                 </div>
-            </nav>
 
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <Card>
+                {/* Feature Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <Card
+                        className="hover:shadow-lg transition-all hover:scale-105 cursor-pointer border-2"
+                        onClick={() => navigate("/grupos")}
+                    >
+                        <CardHeader>
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-primary/10 rounded-lg">
+                                    <Users className="h-6 w-6 text-primary" />
+                                </div>
+                                <CardTitle>Grupos</CardTitle>
+                            </div>
+                            <CardDescription>
+                                Crie grupos para diferentes ocasiões e adicione membros
+                            </CardDescription>
+                        </CardHeader>
+                    </Card>
+
+                    <Card
+                        className="hover:shadow-lg transition-all hover:scale-105 cursor-pointer border-2"
+                        onClick={() => navigate("/grupos")}
+                    >
+                        <CardHeader>
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-primary/10 rounded-lg">
+                                    <Receipt className="h-6 w-6 text-primary" />
+                                </div>
+                                <CardTitle>Despesas</CardTitle>
+                            </div>
+                            <CardDescription>
+                                Registre despesas e divida automaticamente entre membros
+                            </CardDescription>
+                        </CardHeader>
+                    </Card>
+
+                    <Card
+                        className="hover:shadow-lg transition-all hover:scale-105 cursor-pointer border-2"
+                        onClick={() => navigate("/grupos")}
+                    >
+                        <CardHeader>
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-primary/10 rounded-lg">
+                                    <TrendingUp className="h-6 w-6 text-primary" />
+                                </div>
+                                <CardTitle>Saldos</CardTitle>
+                            </div>
+                            <CardDescription>
+                                Visualize quem deve para quem e simplifique pagamentos
+                            </CardDescription>
+                        </CardHeader>
+                    </Card>
+                </div>
+
+                {/* Quick Actions */}
+                <Card className="border-2 border-primary/20">
                     <CardHeader>
-                        <CardTitle className="text-2xl">Bem-vindo ao Dividir Conta!</CardTitle>
+                        <CardTitle>Comece Agora</CardTitle>
                         <CardDescription>
-                            Gerencie suas despesas compartilhadas de forma fácil e organizada
+                            Organize suas despesas compartilhadas em poucos cliques
                         </CardDescription>
                     </CardHeader>
+                    <CardContent className="space-y-4">
+                        <Button
+                            onClick={() => navigate("/grupos")}
+                            className="w-full gap-2 h-12 text-lg"
+                            size="lg"
+                        >
+                            Ver Meus Grupos
+                            <ArrowRight className="h-5 w-5" />
+                        </Button>
+                        <p className="text-sm text-muted-foreground text-center">
+                            Crie um grupo novo ou acesse grupos existentes
+                        </p>
+                    </CardContent>
+                </Card>
+
+                {/* How it works */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Como Funciona</CardTitle>
+                    </CardHeader>
                     <CardContent>
-                        <div className="space-y-4">
-                            <div className="space-y-2">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                            <div className="space-y-2 text-center">
+                                <div className="bg-primary text-primary-foreground w-10 h-10 rounded-full flex items-center justify-center mx-auto font-bold text-lg">
+                                    1
+                                </div>
+                                <h3 className="font-semibold">Crie um Grupo</h3>
                                 <p className="text-sm text-muted-foreground">
-                                    <span className="font-medium">Usuário:</span> {user?.username}
+                                    Organize despesas por ocasião
                                 </p>
                             </div>
-
-                            <div className="pt-4 border-t">
-                                <Button
-                                    onClick={() => navigate("/grupos")}
-                                    className="w-full"
-                                >
-                                    Ver Meus Grupos
-                                </Button>
+                            <div className="space-y-2 text-center">
+                                <div className="bg-primary text-primary-foreground w-10 h-10 rounded-full flex items-center justify-center mx-auto font-bold text-lg">
+                                    2
+                                </div>
+                                <h3 className="font-semibold">Adicione Membros</h3>
+                                <p className="text-sm text-muted-foreground">
+                                    Convide pessoas para o grupo
+                                </p>
+                            </div>
+                            <div className="space-y-2 text-center">
+                                <div className="bg-primary text-primary-foreground w-10 h-10 rounded-full flex items-center justify-center mx-auto font-bold text-lg">
+                                    3
+                                </div>
+                                <h3 className="font-semibold">Registre Despesas</h3>
+                                <p className="text-sm text-muted-foreground">
+                                    Adicione gastos e divida valores
+                                </p>
+                            </div>
+                            <div className="space-y-2 text-center">
+                                <div className="bg-primary text-primary-foreground w-10 h-10 rounded-full flex items-center justify-center mx-auto font-bold text-lg">
+                                    4
+                                </div>
+                                <h3 className="font-semibold">Acerte as Contas</h3>
+                                <p className="text-sm text-muted-foreground">
+                                    Veja quem deve e receba pagamentos
+                                </p>
                             </div>
                         </div>
                     </CardContent>
                 </Card>
-            </main>
-        </div>
+            </div>
+        </Layout>
     );
 }
 

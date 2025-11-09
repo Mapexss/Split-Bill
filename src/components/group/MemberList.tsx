@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { UserPlus, Users } from "lucide-react";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 
 interface Member {
     user_id: number;
@@ -23,6 +23,7 @@ export function MemberList({ members, groupId, onMemberAdded }: MemberListProps)
     const [searching, setSearching] = useState(false);
     const [showResults, setShowResults] = useState(false);
     const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+    const dropdownRef = useRef<HTMLDivElement>(null);
 
     const searchUsers = async (query: string) => {
         if (query.length < 2) {
@@ -56,6 +57,23 @@ export function MemberList({ members, groupId, onMemberAdded }: MemberListProps)
 
         return () => clearTimeout(timer);
     }, [memberUsername, showAddMember]);
+
+    // Fechar dropdown ao clicar fora
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setShowResults(false);
+            }
+        };
+
+        if (showResults) {
+            document.addEventListener("mousedown", handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, [showResults]);
 
     const handleSelectUser = (userId: number, username: string) => {
         setSelectedUserId(userId);
@@ -115,7 +133,7 @@ export function MemberList({ members, groupId, onMemberAdded }: MemberListProps)
             <CardContent className="space-y-2">
                 {showAddMember && (
                     <form onSubmit={handleAddMember} className="space-y-2 mb-4 pb-4 border-b">
-                        <div className="relative">
+                        <div className="relative" ref={dropdownRef}>
                             <Input
                                 type="text"
                                 placeholder="Digite para buscar usuário..."
@@ -133,7 +151,7 @@ export function MemberList({ members, groupId, onMemberAdded }: MemberListProps)
                                     }
                                 }}
                                 autoComplete="off"
-                                className={selectedUserId ? "border-green-500" : ""}
+                                className={selectedUserId ? "border-green-500 dark:border-green-600" : ""}
                             />
                             {searching && (
                                 <div className="absolute right-3 top-3">
@@ -141,12 +159,12 @@ export function MemberList({ members, groupId, onMemberAdded }: MemberListProps)
                                 </div>
                             )}
                             {showResults && searchResults.length > 0 && (
-                                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
+                                <div className="absolute z-10 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-60 overflow-auto">
                                     {searchResults.map((user) => (
                                         <button
                                             key={user.id}
                                             type="button"
-                                            className="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center gap-2 transition-colors"
+                                            className="w-full text-left px-4 py-2 hover:bg-accent flex items-center gap-2 transition-colors"
                                             onClick={() => handleSelectUser(user.id, user.username)}
                                         >
                                             <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -170,7 +188,7 @@ export function MemberList({ members, groupId, onMemberAdded }: MemberListProps)
                                 </p>
                             )}
                             {selectedUserId && (
-                                <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                                <p className="text-xs text-green-600 dark:text-green-500 mt-1 flex items-center gap-1">
                                     <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                                     </svg>

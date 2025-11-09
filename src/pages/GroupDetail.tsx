@@ -4,9 +4,10 @@ import { ExpenseAddForm } from "@/components/group/ExpenseAddForm";
 import { ExpenseEditForm } from "@/components/group/ExpenseEditForm";
 import { ExpenseList } from "@/components/group/ExpenseList";
 import { MemberList } from "@/components/group/MemberList";
+import { Layout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, LogOut, Plus } from "lucide-react";
+import { ArrowLeft, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
@@ -44,6 +45,28 @@ interface Debt {
     amount: number;
 }
 
+interface ExpenseDebt {
+    expenseId: number;
+    expenseDescription: string;
+    expenseDate: string;
+    expenseCategory?: string;
+    from: number;
+    fromUsername: string;
+    to: number;
+    toUsername: string;
+    amount: number;
+    totalExpenseAmount: number;
+}
+
+interface DebtWithDetails {
+    from: number;
+    fromUsername: string;
+    to: number;
+    toUsername: string;
+    amount: number;
+    expenses: ExpenseDebt[];
+}
+
 export function GroupDetail() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
@@ -52,32 +75,30 @@ export function GroupDetail() {
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const [balances, setBalances] = useState<Balance[]>([]);
     const [debts, setDebts] = useState<Debt[]>([]);
+    const [debtsWithDetails, setDebtsWithDetails] = useState<DebtWithDetails[]>([]);
     const [loading, setLoading] = useState(true);
-    const [user, setUser] = useState<{ username: string; userId?: number } | null>(null);
+    const [currentUserId, setCurrentUserId] = useState<number | null>(null);
 
     // UI states
     const [showAddExpense, setShowAddExpense] = useState(false);
     const [editingExpenseId, setEditingExpenseId] = useState<number | null>(null);
 
     useEffect(() => {
-        checkAuth();
+        loadCurrentUser();
         if (id) {
             loadGroupData();
         }
     }, [id]);
 
-    const checkAuth = async () => {
+    const loadCurrentUser = async () => {
         try {
             const response = await fetch("/api/me");
             const data = await response.json();
-
-            if (!data.authenticated) {
-                navigate("/entrar");
-            } else {
-                setUser({ username: data.username });
+            if (data.authenticated && data.userId) {
+                setCurrentUserId(data.userId);
             }
         } catch (error) {
-            navigate("/entrar");
+            console.error("Erro ao carregar usuário:", error);
         }
     };
 
@@ -92,6 +113,7 @@ export function GroupDetail() {
                 setExpenses(data.expenses);
                 setBalances(data.balances);
                 setDebts(data.debts);
+                setDebtsWithDetails(data.debtsWithDetails || []);
             } else {
                 navigate("/grupos");
             }
@@ -100,15 +122,6 @@ export function GroupDetail() {
             navigate("/grupos");
         } finally {
             setLoading(false);
-        }
-    };
-
-    const handleLogout = async () => {
-        try {
-            await fetch("/api/logout", { method: "POST" });
-            navigate("/entrar");
-        } catch (error) {
-            console.error("Erro ao sair:", error);
         }
     };
 
@@ -129,9 +142,14 @@ export function GroupDetail() {
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
-                <p className="text-muted-foreground">Carregando...</p>
-            </div>
+            <Layout>
+                <div className="flex items-center justify-center py-20">
+                    <div className="flex flex-col items-center gap-4">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                        <p className="text-muted-foreground">Carregando...</p>
+                    </div>
+                </div>
+            </Layout>
         );
     }
 
@@ -140,39 +158,28 @@ export function GroupDetail() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-            <nav className="bg-white shadow-sm border-b">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between h-16 items-center">
-                        <Link to="/painel" className="text-2xl font-bold text-primary">
-                            Dividir Conta
-                        </Link>
-                        <div className="flex items-center space-x-4">
-                            <span className="text-sm text-muted-foreground">
-                                Olá, <span className="font-medium text-foreground">{user?.username}</span>
-                            </span>
-                            <Button variant="outline" size="sm" onClick={handleLogout} className="gap-2">
-                                <LogOut className="h-4 w-4" />
-                                Sair
-                            </Button>
-                        </div>
+        <Layout maxWidth="full">
+            <div className="space-y-6">
+                {/* Header */}
+                <div className="flex flex-col gap-4">
+                    <Link
+                        to="/grupos"
+                        className="inline-flex items-center text-primary hover:text-primary/80 transition-colors w-fit gap-1"
+                    >
+                        <ArrowLeft className="h-4 w-4" />
+                        <span className="font-medium">Voltar para grupos</span>
+                    </Link>
+                    <div>
+                        <h1 className="text-3xl md:text-4xl font-bold">{group.name}</h1>
+                        {group.description && (
+                            <p className="text-muted-foreground mt-2 text-lg">{group.description}</p>
+                        )}
                     </div>
                 </div>
-            </nav>
 
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <div className="mb-6">
-                    <Link to="/grupos" className="inline-flex items-center text-primary hover:underline mb-2">
-                        <ArrowLeft className="h-4 w-4 mr-1" />
-                        Voltar para grupos
-                    </Link>
-                    <h1 className="text-3xl font-bold text-gray-900">{group.name}</h1>
-                    {group.description && <p className="text-gray-600 mt-1">{group.description}</p>}
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                     {/* Sidebar */}
-                    <div className="lg:col-span-1 space-y-4">
+                    <div className="xl:col-span-1 space-y-4 order-2 xl:order-1">
                         <MemberList
                             members={members}
                             groupId={id!}
@@ -182,23 +189,25 @@ export function GroupDetail() {
                         <BalanceList balances={balances} />
 
                         <DebtList
-                            debts={debts}
+                            debtsWithDetails={debtsWithDetails}
                             groupId={id!}
+                            currentUserId={currentUserId}
                             onSettlement={loadGroupData}
                         />
                     </div>
 
                     {/* Main content */}
-                    <div className="lg:col-span-2 space-y-4">
+                    <div className="xl:col-span-2 space-y-4 order-1 xl:order-2">
                         {/* Add expense button */}
                         {!showAddExpense && !editingExpenseId && (
-                            <Card>
-                                <CardContent className="py-4">
+                            <Card className="border-2 border-dashed hover:border-primary transition-colors">
+                                <CardContent className="py-6">
                                     <Button
                                         onClick={() => setShowAddExpense(true)}
-                                        className="w-full gap-2"
+                                        className="w-full gap-2 h-12 text-lg"
+                                        size="lg"
                                     >
-                                        <Plus className="h-4 w-4" />
+                                        <Plus className="h-5 w-5" />
                                         Adicionar Despesa
                                     </Button>
                                 </CardContent>
@@ -234,7 +243,7 @@ export function GroupDetail() {
                         )}
                     </div>
                 </div>
-            </main>
-        </div>
+            </div>
+        </Layout>
     );
 }

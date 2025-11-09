@@ -8,11 +8,14 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useTheme } from "@/contexts/ThemeContext";
+import { Moon, Receipt, Sun } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 export function Register() {
     const navigate = useNavigate();
+    const { theme, toggleTheme } = useTheme();
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
@@ -55,13 +58,29 @@ export function Register() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-blue-50 to-indigo-100">
-            <Card className="w-full max-w-md">
-                <CardHeader className="space-y-1">
+        <div className="min-h-screen flex items-center justify-center px-4 bg-background relative">
+            {/* Theme Toggle - Top Right */}
+            <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleTheme}
+                className="absolute top-4 right-4 rounded-full"
+                aria-label="Alternar tema"
+            >
+                {theme === "light" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+            </Button>
+
+            <Card className="w-full max-w-md shadow-lg">
+                <CardHeader className="space-y-4 pb-4">
+                    <div className="flex justify-center">
+                        <div className="p-3 bg-primary/10 rounded-full">
+                            <Receipt className="h-10 w-10 text-primary" />
+                        </div>
+                    </div>
                     <CardTitle className="text-3xl font-bold text-center">
                         Criar Conta
                     </CardTitle>
-                    <CardDescription className="text-center">
+                    <CardDescription className="text-center text-base">
                         Entre no Dividir Conta para gerenciar suas despesas
                     </CardDescription>
                 </CardHeader>
@@ -77,6 +96,7 @@ export function Register() {
                                 onChange={(e) => setUsername(e.target.value)}
                                 required
                                 disabled={loading}
+                                className="h-11"
                             />
                         </div>
 
@@ -90,6 +110,7 @@ export function Register() {
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
                                 disabled={loading}
+                                className="h-11"
                             />
                         </div>
 
@@ -103,6 +124,7 @@ export function Register() {
                                 onChange={(e) => setConfirmPassword(e.target.value)}
                                 required
                                 disabled={loading}
+                                className="h-11"
                             />
                         </div>
 
@@ -112,17 +134,19 @@ export function Register() {
                             </div>
                         )}
 
-                        <Button type="submit" className="w-full" disabled={loading}>
+                        <Button type="submit" className="w-full h-11" disabled={loading}>
                             {loading ? "Criando conta..." : "Criar Conta"}
                         </Button>
                     </form>
 
-                    <p className="text-center text-sm text-muted-foreground mt-6">
-                        Já tem uma conta?{" "}
-                        <Link to="/entrar" className="text-primary hover:underline font-medium">
-                            Entre aqui
-                        </Link>
-                    </p>
+                    <div className="mt-6 pt-4 border-t">
+                        <p className="text-center text-sm text-muted-foreground">
+                            Já tem uma conta?{" "}
+                            <Link to="/entrar" className="text-primary hover:underline font-medium">
+                                Entre aqui
+                            </Link>
+                        </p>
+                    </div>
                 </CardContent>
             </Card>
         </div>

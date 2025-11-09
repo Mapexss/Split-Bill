@@ -43,15 +43,44 @@ export function ExpenseAddForm({ groupId, members, onExpenseAdded, onCancel }: E
         const includedCount = includedMembers.size;
 
         if (!isNaN(amount) && includedCount > 0) {
-            const perPerson = (amount / includedCount).toFixed(2);
+            const perPerson = parseFloat((amount / includedCount).toFixed(2));
             const newSplits: Record<number, string> = {};
+
+            // Atribuir valor base para todos
             members.forEach((m) => {
                 if (includedMembers.has(m.user_id)) {
-                    newSplits[m.user_id] = perPerson;
+                    newSplits[m.user_id] = perPerson.toFixed(2);
                 } else {
                     newSplits[m.user_id] = "0";
                 }
             });
+
+            // Calcular diferença por causa de arredondamento
+            const totalSplit = perPerson * includedCount;
+            const difference = Math.round((amount - totalSplit) * 100) / 100;
+
+            // Se houver diferença (centavos), adicionar ao pagador ou primeiro incluído
+            if (Math.abs(difference) > 0.001) {
+                let adjustUserId: number | null = null;
+
+                // Prioridade 1: Adicionar ao pagador se estiver incluído
+                if (expensePaidBy && includedMembers.has(expensePaidBy)) {
+                    adjustUserId = expensePaidBy;
+                } else {
+                    // Prioridade 2: Adicionar ao primeiro membro incluído
+                    const firstIncluded = Array.from(includedMembers)[0];
+                    if (firstIncluded) {
+                        adjustUserId = firstIncluded;
+                    }
+                }
+
+                // Ajustar o valor
+                if (adjustUserId !== null) {
+                    const adjustedValue = perPerson + difference;
+                    newSplits[adjustUserId] = adjustedValue.toFixed(2);
+                }
+            }
+
             setExpenseSplits(newSplits);
         }
     };
@@ -145,21 +174,21 @@ export function ExpenseAddForm({ groupId, members, onExpenseAdded, onCancel }: E
             </CardHeader>
             <CardContent>
                 <form onSubmit={handleAddExpense} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
+                    <div className="grid grid-cols-5 gap-4">
+                        <div className="space-y-2 col-span-5">
                             <Label htmlFor="description">Descrição</Label>
                             <Input
                                 id="description"
                                 type="text"
-                                placeholder="Ex: Jantar"
+                                placeholder="Ex: Jantar no restaurante"
                                 value={expenseDescription}
                                 onChange={(e) => setExpenseDescription(e.target.value)}
                                 required
                             />
                         </div>
 
-                        <div className="space-y-2">
-                            <Label htmlFor="amount">Valor Total</Label>
+                        <div className="space-y-2 col-span-3">
+                            <Label htmlFor="amount">Valor (R$)</Label>
                             <Input
                                 id="amount"
                                 type="number"
@@ -171,8 +200,19 @@ export function ExpenseAddForm({ groupId, members, onExpenseAdded, onCancel }: E
                             />
                         </div>
 
-                        <div className="space-y-2">
-                            <Label htmlFor="paidBy">Pago por</Label>
+                        <div className="space-y-2 col-span-2">
+                            <Label htmlFor="date">Data</Label>
+                            <Input
+                                id="date"
+                                type="date"
+                                value={expenseDate}
+                                onChange={(e) => setExpenseDate(e.target.value)}
+                                required
+                            />
+                        </div>
+
+                        <div className="space-y-2 col-span-5">
+                            <Label htmlFor="paidBy">Quem pagou?</Label>
                             <select
                                 id="paidBy"
                                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
@@ -189,18 +229,7 @@ export function ExpenseAddForm({ groupId, members, onExpenseAdded, onCancel }: E
                             </select>
                         </div>
 
-                        <div className="space-y-2">
-                            <Label htmlFor="date">Data</Label>
-                            <Input
-                                id="date"
-                                type="date"
-                                value={expenseDate}
-                                onChange={(e) => setExpenseDate(e.target.value)}
-                                required
-                            />
-                        </div>
-
-                        <div className="space-y-2 col-span-2">
+                        <div className="space-y-2 col-span-5">
                             <Label htmlFor="category">Categoria (opcional)</Label>
                             <Input
                                 id="category"

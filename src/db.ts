@@ -87,11 +87,20 @@ db.run(`
     amount REAL NOT NULL,
     settled_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     note TEXT,
+    expense_id INTEGER,
     FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,
     FOREIGN KEY (from_user) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (to_user) REFERENCES users(id) ON DELETE CASCADE
+    FOREIGN KEY (to_user) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (expense_id) REFERENCES expenses(id) ON DELETE CASCADE
   )
 `);
+
+// Add expense_id column to existing settlements table if it doesn't exist
+try {
+  db.run(`ALTER TABLE settlements ADD COLUMN expense_id INTEGER REFERENCES expenses(id) ON DELETE CASCADE`);
+} catch (e) {
+  // Column already exists, ignore error
+}
 
 // Create expense_changes table (audit log for expense edits)
 db.run(`

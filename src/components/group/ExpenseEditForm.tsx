@@ -74,15 +74,44 @@ export function ExpenseEditForm({ expenseId, members, onExpenseUpdated, onCancel
         const includedCount = editIncludedMembers.size;
 
         if (!isNaN(amount) && includedCount > 0) {
-            const perPerson = (amount / includedCount).toFixed(2);
+            const perPerson = parseFloat((amount / includedCount).toFixed(2));
             const newSplits: Record<number, string> = {};
+
+            // Atribuir valor base para todos
             members.forEach((m) => {
                 if (editIncludedMembers.has(m.user_id)) {
-                    newSplits[m.user_id] = perPerson;
+                    newSplits[m.user_id] = perPerson.toFixed(2);
                 } else {
                     newSplits[m.user_id] = "0";
                 }
             });
+
+            // Calcular diferença por causa de arredondamento
+            const totalSplit = perPerson * includedCount;
+            const difference = Math.round((amount - totalSplit) * 100) / 100;
+
+            // Se houver diferença (centavos), adicionar ao pagador ou primeiro incluído
+            if (Math.abs(difference) > 0.001) {
+                let adjustUserId: number | null = null;
+
+                // Prioridade 1: Adicionar ao pagador se estiver incluído
+                if (editExpensePaidBy && editIncludedMembers.has(editExpensePaidBy)) {
+                    adjustUserId = editExpensePaidBy;
+                } else {
+                    // Prioridade 2: Adicionar ao primeiro membro incluído
+                    const firstIncluded = Array.from(editIncludedMembers)[0];
+                    if (firstIncluded) {
+                        adjustUserId = firstIncluded;
+                    }
+                }
+
+                // Ajustar o valor
+                if (adjustUserId !== null) {
+                    const adjustedValue = perPerson + difference;
+                    newSplits[adjustUserId] = adjustedValue.toFixed(2);
+                }
+            }
+
             setEditExpenseSplits(newSplits);
         }
     };
@@ -197,8 +226,8 @@ export function ExpenseEditForm({ expenseId, members, onExpenseUpdated, onCancel
             </CardHeader>
             <CardContent>
                 <form onSubmit={handleUpdateExpense} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2 col-span-2">
+                    <div className="grid grid-cols-5 gap-4">
+                        <div className="space-y-2 col-span-5">
                             <Label htmlFor="edit-description">Descrição</Label>
                             <Input
                                 id="edit-description"
@@ -210,8 +239,8 @@ export function ExpenseEditForm({ expenseId, members, onExpenseUpdated, onCancel
                             />
                         </div>
 
-                        <div className="space-y-2">
-                            <Label htmlFor="edit-amount">Valor total (R$)</Label>
+                        <div className="space-y-2 col-span-3">
+                            <Label htmlFor="edit-amount">Valor (R$)</Label>
                             <Input
                                 id="edit-amount"
                                 type="number"
@@ -223,13 +252,24 @@ export function ExpenseEditForm({ expenseId, members, onExpenseUpdated, onCancel
                             />
                         </div>
 
-                        <div className="space-y-2">
+                        <div className="space-y-2 col-span-2">
+                            <Label htmlFor="edit-date">Data</Label>
+                            <Input
+                                id="edit-date"
+                                type="date"
+                                value={editExpenseDate}
+                                onChange={(e) => setEditExpenseDate(e.target.value)}
+                                required
+                            />
+                        </div>
+
+                        <div className="space-y-2 col-span-5">
                             <Label htmlFor="edit-paid-by">Quem pagou?</Label>
                             <select
                                 id="edit-paid-by"
                                 value={editExpensePaidBy}
                                 onChange={(e) => setEditExpensePaidBy(parseInt(e.target.value))}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                className="w-full px-3 py-2 border border-input bg-background rounded-md"
                                 required
                             >
                                 <option value="">Selecione...</option>
@@ -241,18 +281,7 @@ export function ExpenseEditForm({ expenseId, members, onExpenseUpdated, onCancel
                             </select>
                         </div>
 
-                        <div className="space-y-2">
-                            <Label htmlFor="edit-date">Data</Label>
-                            <Input
-                                id="edit-date"
-                                type="date"
-                                value={editExpenseDate}
-                                onChange={(e) => setEditExpenseDate(e.target.value)}
-                                required
-                            />
-                        </div>
-
-                        <div className="space-y-2 col-span-2">
+                        <div className="space-y-2 col-span-5">
                             <Label htmlFor="edit-category">Categoria (opcional)</Label>
                             <Input
                                 id="edit-category"

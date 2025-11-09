@@ -23,8 +23,8 @@ export function ExpenseDetails({
     onShowHistory
 }: ExpenseDetailsProps) {
     return (
-        <div className="px-3 pb-3 pt-0 border-t border-gray-200">
-            <p className="text-sm font-medium text-gray-700 mb-2 mt-3">
+        <div className="px-3 pb-3 pt-0 border-t">
+            <p className="text-sm font-medium mb-2 mt-3">
                 Divisão:
             </p>
             <div className="space-y-2">
@@ -33,27 +33,27 @@ export function ExpenseDetails({
                         key={split.user_id}
                         className="flex items-center justify-between text-sm"
                     >
-                        <span className="text-gray-700">
+                        <span>
                             {split.username}
                         </span>
-                        <span className="font-medium text-red-600">
+                        <span className="font-medium text-destructive">
                             -R$ {split.amount.toFixed(2)}
                         </span>
                     </div>
                 ))}
-                <div className="pt-2 mt-2 border-t border-gray-200">
+                <div className="pt-2 mt-2 border-t">
                     <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-700 font-medium">
+                        <span className="font-medium">
                             {paidByUsername} (pagou)
                         </span>
-                        <span className="font-semibold text-green-600">
+                        <span className="font-semibold text-green-600 dark:text-green-500">
                             +R$ {totalAmount.toFixed(2)}
                         </span>
                     </div>
                 </div>
 
                 {/* Action buttons */}
-                <div className="flex gap-2 mt-3 pt-3 border-t border-gray-200">
+                <div className="flex gap-2 mt-3 pt-3 border-t">
                     <Button
                         type="button"
                         variant="outline"

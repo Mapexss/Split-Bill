@@ -1,3 +1,4 @@
+import { Layout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import {
     Card,
@@ -8,9 +9,9 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { LogOut, Plus, Users } from "lucide-react";
+import { Plus, Users } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 interface Group {
     id: number;
@@ -20,34 +21,16 @@ interface Group {
 }
 
 export function Groups() {
-    const navigate = useNavigate();
     const [groups, setGroups] = useState<Group[]>([]);
     const [loading, setLoading] = useState(true);
     const [showCreateForm, setShowCreateForm] = useState(false);
     const [name, setName] = useState("");
     const [description, setDescription] = useState("");
     const [error, setError] = useState("");
-    const [user, setUser] = useState<{ username: string } | null>(null);
 
     useEffect(() => {
-        checkAuth();
         loadGroups();
     }, []);
-
-    const checkAuth = async () => {
-        try {
-            const response = await fetch("/api/me");
-            const data = await response.json();
-
-            if (!data.authenticated) {
-                navigate("/entrar");
-            } else {
-                setUser({ username: data.username });
-            }
-        } catch (error) {
-            navigate("/entrar");
-        }
-    };
 
     const loadGroups = async () => {
         try {
@@ -61,15 +44,6 @@ export function Groups() {
             console.error("Erro ao carregar grupos:", error);
         } finally {
             setLoading(false);
-        }
-    };
-
-    const handleLogout = async () => {
-        try {
-            await fetch("/api/logout", { method: "POST" });
-            navigate("/entrar");
-        } catch (error) {
-            console.error("Erro ao sair:", error);
         }
     };
 
@@ -106,47 +80,37 @@ export function Groups() {
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
-                <p className="text-muted-foreground">Carregando...</p>
-            </div>
+            <Layout>
+                <div className="flex items-center justify-center py-20">
+                    <div className="flex flex-col items-center gap-4">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                        <p className="text-muted-foreground">Carregando...</p>
+                    </div>
+                </div>
+            </Layout>
         );
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-            <nav className="bg-white shadow-sm border-b">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between h-16 items-center">
-                        <Link to="/painel" className="text-2xl font-bold text-primary">
-                            Dividir Conta
-                        </Link>
-                        <div className="flex items-center space-x-4">
-                            <span className="text-sm text-muted-foreground">
-                                Olá, <span className="font-medium text-foreground">{user?.username}</span>
-                            </span>
-                            <Button variant="outline" size="sm" onClick={handleLogout} className="gap-2">
-                                <LogOut className="h-4 w-4" />
-                                Sair
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            </nav>
-
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <div className="flex justify-between items-center mb-6">
+        <Layout maxWidth="2xl">
+            <div className="space-y-6">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-900">Meus Grupos</h1>
-                        <p className="text-gray-600 mt-1">Gerencie suas despesas compartilhadas</p>
+                        <h1 className="text-3xl md:text-4xl font-bold">Meus Grupos</h1>
+                        <p className="text-muted-foreground mt-1">Gerencie suas despesas compartilhadas</p>
                     </div>
-                    <Button onClick={() => setShowCreateForm(!showCreateForm)} className="gap-2">
-                        <Plus className="h-4 w-4" />
+                    <Button
+                        onClick={() => setShowCreateForm(!showCreateForm)}
+                        className="gap-2 w-full sm:w-auto"
+                        size="lg"
+                    >
+                        <Plus className="h-5 w-5" />
                         Novo Grupo
                     </Button>
                 </div>
 
                 {showCreateForm && (
-                    <Card className="mb-6">
+                    <Card className="border-2 border-primary/20">
                         <CardHeader>
                             <CardTitle>Criar Novo Grupo</CardTitle>
                             <CardDescription>Adicione um grupo para dividir despesas com amigos</CardDescription>
@@ -204,30 +168,36 @@ export function Groups() {
 
                 {groups.length === 0 ? (
                     <Card>
-                        <CardContent className="py-12 text-center">
-                            <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                            <h3 className="text-lg font-semibold mb-2">Nenhum grupo ainda</h3>
-                            <p className="text-muted-foreground mb-4">
-                                Crie seu primeiro grupo para começar a dividir despesas
-                            </p>
-                            <Button onClick={() => setShowCreateForm(true)} className="gap-2">
-                                <Plus className="h-4 w-4" />
-                                Criar Primeiro Grupo
-                            </Button>
+                        <CardContent className="py-16 text-center">
+                            <div className="flex flex-col items-center space-y-4">
+                                <div className="p-4 bg-primary/10 rounded-full">
+                                    <Users className="h-16 w-16 text-primary" />
+                                </div>
+                                <h3 className="text-xl font-semibold">Nenhum grupo ainda</h3>
+                                <p className="text-muted-foreground max-w-md">
+                                    Crie seu primeiro grupo para começar a dividir despesas com amigos e familiares
+                                </p>
+                                <Button onClick={() => setShowCreateForm(true)} className="gap-2" size="lg">
+                                    <Plus className="h-5 w-5" />
+                                    Criar Primeiro Grupo
+                                </Button>
+                            </div>
                         </CardContent>
                     </Card>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                         {groups.map((group) => (
                             <Link key={group.id} to={`/grupos/${group.id}`}>
-                                <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
+                                <Card className="hover:shadow-lg hover:border-primary/50 transition-all cursor-pointer h-full hover:scale-105">
                                     <CardHeader>
                                         <CardTitle className="flex items-center gap-2">
-                                            <Users className="h-5 w-5 text-primary" />
-                                            {group.name}
+                                            <div className="p-2 bg-primary/10 rounded-lg">
+                                                <Users className="h-5 w-5 text-primary" />
+                                            </div>
+                                            <span className="truncate">{group.name}</span>
                                         </CardTitle>
                                         {group.description && (
-                                            <CardDescription>{group.description}</CardDescription>
+                                            <CardDescription className="line-clamp-2">{group.description}</CardDescription>
                                         )}
                                     </CardHeader>
                                     <CardContent>
@@ -240,8 +210,8 @@ export function Groups() {
                         ))}
                     </div>
                 )}
-            </main>
-        </div>
+            </div>
+        </Layout>
     );
 }
 

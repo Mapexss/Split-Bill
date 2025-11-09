@@ -27,6 +27,7 @@ export interface Expense {
     category?: string;
     date: string;
     created_at: string;
+    is_fully_paid?: boolean;
 }
 
 export interface ExpenseSplit {
@@ -135,7 +136,7 @@ export function addExpense(
 
 // Listar despesas do grupo
 export function getGroupExpenses(groupId: number): Expense[] {
-    return db
+    const expenses = db
         .query(
             `SELECT e.*, u.username as paid_by_username
        FROM expenses e
@@ -144,6 +145,51 @@ export function getGroupExpenses(groupId: number): Expense[] {
        ORDER BY e.date DESC, e.created_at DESC`
         )
         .all(groupId) as Expense[];
+
+    // Adicionar informação sobre se a despesa está totalmente paga
+    return expenses.map(expense => ({
+        ...expense,
+        is_fully_paid: isExpenseFullyPaid(expense.id)
+    }));
+}
+
+// Verificar se uma despesa está totalmente paga
+export function isExpenseFullyPaid(expenseId: number): boolean {
+    // Buscar todas as splits da despesa
+    const splits = getExpenseSplits(expenseId);
+
+    // Buscar todos os settlements vinculados a esta despesa
+    const settlements = db
+        .query("SELECT * FROM settlements WHERE expense_id = ?")
+        .all(expenseId) as any[];
+
+    // Criar mapa de pagamentos por pessoa (from_user -> to_user)
+    const paidAmounts = new Map<string, number>();
+
+    for (const settlement of settlements) {
+        const key = `${settlement.from_user}-${settlement.to_user}`;
+        paidAmounts.set(key, (paidAmounts.get(key) || 0) + settlement.amount);
+    }
+
+    // Buscar quem pagou a despesa
+    const expense = db.query("SELECT paid_by FROM expenses WHERE id = ?").get(expenseId) as any;
+    if (!expense) return false;
+
+    // Verificar se cada split está paga
+    for (const split of splits) {
+        // Se a pessoa é a mesma que pagou, não precisa pagar a si mesma
+        if (split.user_id === expense.paid_by) continue;
+
+        const key = `${split.user_id}-${expense.paid_by}`;
+        const amountPaid = paidAmounts.get(key) || 0;
+
+        // Se não pagou o suficiente, a despesa não está totalmente paga
+        if (amountPaid < split.amount - 0.01) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 // Obter divisões de uma despesa
@@ -171,6 +217,23 @@ export interface Debt {
     to: number;
     toUsername: string;
     amount: number;
+}
+
+export interface ExpenseDebt {
+    expenseId: number;
+    expenseDescription: string;
+    expenseDate: string;
+    expenseCategory?: string;
+    from: number;
+    fromUsername: string;
+    to: number;
+    toUsername: string;
+    amount: number;
+    totalExpenseAmount: number;
+}
+
+export interface DebtWithDetails extends Debt {
+    expenses: ExpenseDebt[];
 }
 
 export function calculateGroupBalances(groupId: number): Balance[] {
@@ -217,11 +280,13 @@ export function calculateGroupBalances(groupId: number): Balance[] {
         if (to) to.balance -= settlement.amount; // to recebeu, então o que deve receber diminui
     }
 
-    return Array.from(balances.entries()).map(([userId, data]) => ({
-        userId,
-        username: data.username,
-        balance: Math.round(data.balance * 100) / 100, // arredondar para 2 casas decimais
-    }));
+    return Array.from(balances.entries())
+        .map(([userId, data]) => ({
+            userId,
+            username: data.username,
+            balance: Math.round(data.balance * 100) / 100, // arredondar para 2 casas decimais
+        }))
+        .filter(balance => Math.abs(balance.balance) > 0.01); // Filtrar balanços muito próximos de zero
 }
 
 // Calcular quem deve pagar para quem (simplificado)
@@ -262,21 +327,171 @@ export function calculateDebts(groupId: number): Debt[] {
     return debts;
 }
 
+// Calcular dívidas detalhadas por despesa
+export function calculateDebtsWithDetails(groupId: number): DebtWithDetails[] {
+    const expenses = getGroupExpenses(groupId);
+    const members = getGroupMembers(groupId);
+
+    // Buscar todos os settlements
+    const settlements = db
+        .query("SELECT * FROM settlements WHERE group_id = ?")
+        .all(groupId) as any[];
+
+    // Criar mapa de pagamentos por despesa específica
+    const paidExpenses = new Map<string, number>(); // key: "from-to-expenseId", value: total pago
+
+    for (const settlement of settlements) {
+        if (settlement.expense_id) {
+            const key = `${settlement.from_user}-${settlement.to_user}-${settlement.expense_id}`;
+            paidExpenses.set(key, (paidExpenses.get(key) || 0) + settlement.amount);
+        }
+    }
+
+    const expenseDebts: ExpenseDebt[] = [];
+
+    for (const expense of expenses) {
+        const splits = getExpenseSplits(expense.id);
+
+        for (const split of splits) {
+            // Se a pessoa que deve pagar é diferente de quem pagou
+            if (split.user_id !== expense.paid_by) {
+                const fromMember = members.find(m => m.user_id === split.user_id);
+                const toMember = members.find(m => m.user_id === expense.paid_by);
+
+                if (fromMember && toMember) {
+                    // Verificar quanto já foi pago desta despesa específica
+                    const paidKey = `${split.user_id}-${expense.paid_by}-${expense.id}`;
+                    const amountPaid = paidExpenses.get(paidKey) || 0;
+                    const remainingAmount = split.amount - amountPaid;
+
+                    // Só adicionar se ainda resta algo a pagar
+                    if (remainingAmount > 0.01) {
+                        expenseDebts.push({
+                            expenseId: expense.id,
+                            expenseDescription: expense.description,
+                            expenseDate: expense.date,
+                            expenseCategory: expense.category,
+                            from: split.user_id,
+                            fromUsername: split.username,
+                            to: expense.paid_by,
+                            toUsername: expense.paid_by_username,
+                            amount: Math.round(remainingAmount * 100) / 100,
+                            totalExpenseAmount: expense.amount,
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    // Agrupar dívidas por from -> to
+    const debtMap = new Map<string, DebtWithDetails>();
+
+    for (const expDebt of expenseDebts) {
+        const key = `${expDebt.from}-${expDebt.to}`;
+
+        if (!debtMap.has(key)) {
+            debtMap.set(key, {
+                from: expDebt.from,
+                fromUsername: expDebt.fromUsername,
+                to: expDebt.to,
+                toUsername: expDebt.toUsername,
+                amount: 0,
+                expenses: [],
+            });
+        }
+
+        const debt = debtMap.get(key)!;
+        debt.amount += expDebt.amount;
+        debt.expenses.push(expDebt);
+    }
+
+    // Arredondar totais
+    const result = Array.from(debtMap.values())
+        .filter(debt => debt.amount > 0.01)
+        .map(debt => ({
+            ...debt,
+            amount: Math.round(debt.amount * 100) / 100,
+        }));
+
+    return result;
+}
+
 // Registrar pagamento (settlement)
 export function addSettlement(
     groupId: number,
     fromUser: number,
     toUser: number,
     amount: number,
-    note: string | null
+    note: string | null,
+    expenseId?: number | null
 ): number {
     const result = db
         .query(
-            "INSERT INTO settlements (group_id, from_user, to_user, amount, note) VALUES (?, ?, ?, ?, ?)"
+            "INSERT INTO settlements (group_id, from_user, to_user, amount, note, expense_id) VALUES (?, ?, ?, ?, ?, ?)"
         )
-        .run(groupId, fromUser, toUser, amount, note);
+        .run(groupId, fromUser, toUser, amount, note, expenseId || null);
 
     return Number(result.lastInsertRowid);
+}
+
+// Registrar pagamento de uma despesa específica
+export function addExpenseSettlement(
+    groupId: number,
+    expenseId: number,
+    fromUser: number,
+    toUser: number,
+    amount: number
+): number {
+    const expense = db
+        .query("SELECT description FROM expenses WHERE id = ?")
+        .get(expenseId) as any;
+
+    const note = expense ? `Pagamento da despesa: ${expense.description}` : `Pagamento da despesa #${expenseId}`;
+
+    // Registrar settlement com expense_id
+    const settlementId = addSettlement(groupId, fromUser, toUser, amount, note, expenseId);
+
+    // Obter nomes dos usuários para o histórico
+    const fromUserData = db.query("SELECT username FROM users WHERE id = ?").get(fromUser) as any;
+    const toUserData = db.query("SELECT username FROM users WHERE id = ?").get(toUser) as any;
+
+    // Registrar no histórico da despesa
+    db.query(
+        `INSERT INTO expense_changes (expense_id, changed_by, field_name, old_value, new_value)
+         VALUES (?, ?, ?, ?, ?)`
+    ).run(
+        expenseId,
+        fromUser,
+        "payment",
+        null,
+        `${fromUserData?.username || 'Usuário'} pagou R$ ${amount.toFixed(2)} para ${toUserData?.username || 'Usuário'}`
+    );
+
+    return settlementId;
+}
+
+// Registrar pagamento de todas as despesas de uma dívida
+export function addDebtSettlement(
+    groupId: number,
+    fromUser: number,
+    toUser: number,
+    expenses: Array<{ expenseId: number; amount: number }>
+): number[] {
+    const settlementIds: number[] = [];
+
+    for (const expense of expenses) {
+        const settlementId = addExpenseSettlement(
+            groupId,
+            expense.expenseId,
+            fromUser,
+            toUser,
+            expense.amount
+        );
+        settlementIds.push(settlementId);
+    }
+
+    return settlementIds;
 }
 
 // Obter histórico de transações do grupo

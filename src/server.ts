@@ -10,10 +10,13 @@ import {
 import "./db"; // Initialize database
 import { db } from "./db";
 import {
+    addDebtSettlement,
     addExpense,
+    addExpenseSettlement,
     addGroupMember,
     addSettlement,
     calculateDebts,
+    calculateDebtsWithDetails,
     calculateGroupBalances,
     createGroup,
     getExpenseChanges,
@@ -238,8 +241,9 @@ const app = new Elysia()
         const expenses = getGroupExpenses(groupId);
         const balances = calculateGroupBalances(groupId);
         const debts = calculateDebts(groupId);
+        const debtsWithDetails = calculateDebtsWithDetails(groupId);
 
-        return { success: true, group, members, expenses, balances, debts };
+        return { success: true, group, members, expenses, balances, debts, debtsWithDetails };
     })
     // Adicionar membro ao grupo
     .post("/api/groups/:id/members", ({ params, body, cookie }) => {
@@ -482,6 +486,75 @@ const app = new Elysia()
             return { success: true, settlementId };
         } catch (error) {
             return { success: false, error: "Erro ao registrar pagamento" };
+        }
+    })
+    // Registrar pagamento de despesa específica
+    .post("/api/expense-settlements", ({ body, cookie }) => {
+        const sessionId = cookie.session?.value;
+        if (!sessionId || typeof sessionId !== 'string') {
+            return { success: false, error: "Não autenticado" };
+        }
+
+        const userId = getUserFromSession(sessionId);
+        if (!userId) {
+            return { success: false, error: "Sessão inválida" };
+        }
+
+        const { groupId, expenseId, fromUser, toUser, amount } = body as {
+            groupId: number;
+            expenseId: number;
+            fromUser: number;
+            toUser: number;
+            amount: number;
+        };
+
+        if (!groupId || !expenseId || !fromUser || !toUser || !amount) {
+            return { success: false, error: "Dados incompletos" };
+        }
+
+        if (!isGroupMember(groupId, userId)) {
+            return { success: false, error: "Acesso negado" };
+        }
+
+        try {
+            const settlementId = addExpenseSettlement(groupId, expenseId, fromUser, toUser, amount);
+            return { success: true, settlementId };
+        } catch (error) {
+            return { success: false, error: "Erro ao registrar pagamento" };
+        }
+    })
+    // Registrar pagamento de dívida completa (todas as despesas)
+    .post("/api/debt-settlements", ({ body, cookie }) => {
+        const sessionId = cookie.session?.value;
+        if (!sessionId || typeof sessionId !== 'string') {
+            return { success: false, error: "Não autenticado" };
+        }
+
+        const userId = getUserFromSession(sessionId);
+        if (!userId) {
+            return { success: false, error: "Sessão inválida" };
+        }
+
+        const { groupId, fromUser, toUser, expenses } = body as {
+            groupId: number;
+            fromUser: number;
+            toUser: number;
+            expenses: Array<{ expenseId: number; amount: number }>;
+        };
+
+        if (!groupId || !fromUser || !toUser || !expenses || expenses.length === 0) {
+            return { success: false, error: "Dados incompletos" };
+        }
+
+        if (!isGroupMember(groupId, userId)) {
+            return { success: false, error: "Acesso negado" };
+        }
+
+        try {
+            const settlementIds = addDebtSettlement(groupId, fromUser, toUser, expenses);
+            return { success: true, settlementIds };
+        } catch (error) {
+            return { success: false, error: "Erro ao registrar pagamentos" };
         }
     })
     // ===== TRANSAÇÕES =====

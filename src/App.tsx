@@ -1,4 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { ThemeProvider } from "./contexts/ThemeContext";
 import { Dashboard } from "./pages/Dashboard";
 import { GroupDetail } from "./pages/GroupDetail";
 import { Groups } from "./pages/Groups";
@@ -7,6 +8,7 @@ import { Register } from "./pages/Register";
 
 function App() {
   return (
+    <ThemeProvider>
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Navigate to="/painel" replace />} />
@@ -17,6 +19,7 @@ function App() {
         <Route path="/grupos/:id" element={<GroupDetail />} />
       </Routes>
     </BrowserRouter>
+    </ThemeProvider>
   );
 }
 
