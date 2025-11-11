@@ -22,6 +22,7 @@ import {
     getExpenseChanges,
     getExpenseSplits,
     getGroup,
+    getGroupByPublicId,
     getGroupExpenses,
     getGroupMembers,
     getGroupTransactions,
@@ -124,6 +125,7 @@ const app = new Elysia()
         return {
             authenticated: true,
             username: user.username,
+            userId: userId,
         };
     })
     .post("/api/logout", ({ cookie }) => {
@@ -282,6 +284,58 @@ const app = new Elysia()
         }
 
         return { success: true };
+    })
+    // Atualizar flag de convites abertos
+    .put("/api/groups/:id/invites", ({ params, body, cookie }) => {
+        const sessionId = cookie.session?.value;
+        if (!sessionId || typeof sessionId !== 'string') {
+            return { success: false, error: "Não autenticado" };
+        }
+
+        const userId = getUserFromSession(sessionId);
+        if (!userId) {
+            return { success: false, error: "Sessão inválida" };
+        }
+
+        const groupId = parseInt(params.id);
+        if (!isGroupMember(groupId, userId)) {
+            return { success: false, error: "Acesso negado" };
+        }
+
+        const { open_to_invites } = body as { open_to_invites: boolean };
+
+        if (typeof open_to_invites !== 'boolean') {
+            return { success: false, error: "Valor inválido para open_to_invites" };
+        }
+
+        try {
+            // Se estiver habilitando convites e não tiver public_id, gerar um
+            if (open_to_invites) {
+                const group = getGroup(groupId);
+                if (!group) {
+                    return { success: false, error: "Grupo não encontrado" };
+                }
+
+                if (!group.public_id) {
+                    const publicId = crypto.randomUUID();
+                    db.query("UPDATE groups SET public_id = ?, open_to_invites = ? WHERE id = ?")
+                        .run(publicId, 1, groupId);
+                } else {
+                    db.query("UPDATE groups SET open_to_invites = ? WHERE id = ?")
+                        .run(1, groupId);
+                }
+            } else {
+                db.query("UPDATE groups SET open_to_invites = ? WHERE id = ?")
+                    .run(0, groupId);
+            }
+            return { success: true };
+        } catch (error: any) {
+            console.error("Erro ao atualizar configuração:", error);
+            return {
+                success: false,
+                error: error?.message || String(error) || "Erro ao atualizar configuração"
+            };
+        }
     })
     // ===== DESPESAS =====
     // Adicionar despesa
@@ -578,6 +632,83 @@ const app = new Elysia()
         const transactions = getGroupTransactions(groupId);
         return { success: true, transactions };
     })
+    // ===== CONVITES =====
+    // Obter informações do grupo por public_id (público, sem autenticação)
+    .get("/api/join-group/:public_id", ({ params }) => {
+        const { public_id } = params;
+
+        if (!public_id) {
+            return { success: false, error: "ID público inválido" };
+        }
+
+        const group = getGroupByPublicId(public_id);
+
+        if (!group) {
+            return { success: false, error: "Grupo não encontrado" };
+        }
+
+        // Verificar se o grupo está aberto a convites
+        if (!group.open_to_invites || group.open_to_invites === 0) {
+            return { success: false, error: "Este grupo não está aberto a convites" };
+        }
+
+        const members = getGroupMembers(group.id);
+
+        return {
+            success: true,
+            group: {
+                id: group.id,
+                name: group.name,
+                description: group.description,
+            },
+            members: members.map(m => ({
+                username: m.username,
+            })),
+        };
+    })
+    // Aceitar convite e entrar no grupo
+    .post("/api/join-group/:public_id", ({ params, cookie }) => {
+        const sessionId = cookie.session?.value;
+        if (!sessionId || typeof sessionId !== 'string') {
+            return { success: false, error: "Não autenticado" };
+        }
+
+        const userId = getUserFromSession(sessionId);
+        if (!userId) {
+            return { success: false, error: "Sessão inválida" };
+        }
+
+        const { public_id } = params;
+
+        if (!public_id) {
+            return { success: false, error: "ID público inválido" };
+        }
+
+        const group = getGroupByPublicId(public_id);
+
+        if (!group) {
+            return { success: false, error: "Grupo não encontrado" };
+        }
+
+        // Verificar se o grupo está aberto a convites
+        if (!group.open_to_invites || group.open_to_invites === 0) {
+            return { success: false, error: "Este grupo não está aberto a convites" };
+        }
+
+        // Verificar se o usuário já é membro
+        if (isGroupMember(group.id, userId)) {
+            return { success: false, error: "Você já é membro deste grupo" };
+        }
+
+        // Adicionar usuário ao grupo
+        const success = addGroupMember(group.id, userId);
+
+        if (!success) {
+            return { success: false, error: "Erro ao entrar no grupo" };
+        }
+
+        return { success: true, groupId: group.id };
+    })
     // Generic static file handler - serves all files from public directory
     .get("*", async ({ path, set }) => {
         // Only handle static files (not SPA routes)
@@ -587,7 +718,8 @@ const app = new Elysia()
             path === "/registrar" ||
             path === "/painel" ||
             path === "/grupos" ||
-            path.startsWith("/grupos/")) {
+            path.startsWith("/grupos/") ||
+            path.startsWith("/join-group/")) {
             return; // Skip to next handler
         }
 
@@ -620,6 +752,10 @@ const app = new Elysia()
         return indexHtml;
     })
     .get("/grupos/:id", ({ set }) => {
+        set.headers["content-type"] = "text/html; charset=utf-8";
+        return indexHtml;
+    })
+    .get("/join-group/:public_id", ({ set }) => {
         set.headers["content-type"] = "text/html; charset=utf-8";
         return indexHtml;
     })

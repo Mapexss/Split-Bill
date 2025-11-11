@@ -7,6 +7,8 @@ export interface Group {
     description?: string;
     created_by: number;
     created_at: string;
+    public_id?: string;
+    open_to_invites?: number;
 }
 
 export interface GroupMember {
@@ -39,9 +41,12 @@ export interface ExpenseSplit {
 
 // Criar grupo
 export function createGroup(name: string, description: string | null, createdBy: number): number {
+    // Gerar UUID para public_id
+    const publicId = crypto.randomUUID();
+
     const result = db
-        .query("INSERT INTO groups (name, description, created_by) VALUES (?, ?, ?)")
-        .run(name, description, createdBy);
+        .query("INSERT INTO groups (name, description, created_by, public_id, open_to_invites) VALUES (?, ?, ?, ?, ?)")
+        .run(name, description, createdBy, publicId, 0);
 
     const groupId = Number(result.lastInsertRowid);
 
@@ -69,6 +74,13 @@ export function getGroup(groupId: number): Group | null {
     return db
         .query("SELECT * FROM groups WHERE id = ?")
         .get(groupId) as Group | null;
+}
+
+// Obter grupo por public_id
+export function getGroupByPublicId(publicId: string): Group | null {
+    return db
+        .query("SELECT * FROM groups WHERE public_id = ?")
+        .get(publicId) as Group | null;
 }
 
 // Verificar se usuário é membro do grupo

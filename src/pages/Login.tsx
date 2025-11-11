@@ -11,10 +11,11 @@ import { Label } from "@/components/ui/label";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Moon, Receipt, Sun } from "lucide-react";
 import { type FormEvent, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 export function Login() {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const { theme, toggleTheme } = useTheme();
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
@@ -38,7 +39,8 @@ export function Login() {
             const data = await response.json();
 
             if (data.success) {
-                navigate("/painel");
+                const redirect = searchParams.get("redirect");
+                navigate(redirect || "/painel");
             } else {
                 setError(data.error || "Falha no login");
             }

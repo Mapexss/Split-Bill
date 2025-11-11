@@ -7,7 +7,7 @@ import { MemberList } from "@/components/group/MemberList";
 import { Layout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, Plus } from "lucide-react";
+import { ArrowLeft, Copy, Plus, Share2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
@@ -15,6 +15,8 @@ interface Group {
     id: number;
     name: string;
     description?: string;
+    public_id?: string;
+    open_to_invites?: number;
 }
 
 interface Member {
@@ -78,6 +80,7 @@ export function GroupDetail() {
     const [debtsWithDetails, setDebtsWithDetails] = useState<DebtWithDetails[]>([]);
     const [loading, setLoading] = useState(true);
     const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+    const [linkCopied, setLinkCopied] = useState(false);
 
     // UI states
     const [showAddExpense, setShowAddExpense] = useState(false);
@@ -140,6 +143,58 @@ export function GroupDetail() {
         setShowAddExpense(false);
     };
 
+    const handleCopyLink = async () => {
+        if (!group?.public_id) return;
+
+        const link = `${window.location.origin}/join-group/${group.public_id}`;
+
+        try {
+            await navigator.clipboard.writeText(link);
+            setLinkCopied(true);
+            setTimeout(() => setLinkCopied(false), 2000);
+        } catch (error) {
+            console.error("Erro ao copiar link:", error);
+            // Fallback: criar um input temporário
+            const input = document.createElement("input");
+            input.value = link;
+            document.body.appendChild(input);
+            input.select();
+            document.execCommand("copy");
+            document.body.removeChild(input);
+            setLinkCopied(true);
+            setTimeout(() => setLinkCopied(false), 2000);
+        }
+    };
+
+    const handleToggleInvites = async (enabled: boolean) => {
+        try {
+            const response = await fetch(`/api/groups/${id}/invites`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ open_to_invites: enabled }),
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                // Atualizar o estado local imediatamente para feedback visual
+                if (group) {
+                    setGroup({
+                        ...group,
+                        open_to_invites: enabled ? 1 : 0,
+                    });
+                }
+                // Recarregar dados do servidor
+                loadGroupData();
+            } else {
+                console.error("Erro ao atualizar:", data.error);
+            }
+        } catch (error) {
+            console.error("Erro ao atualizar configuração:", error);
+        }
+    };
+
     if (loading) {
         return (
             <Layout>
@@ -169,11 +224,46 @@ export function GroupDetail() {
                         <ArrowLeft className="h-4 w-4" />
                         <span className="font-medium">Voltar para grupos</span>
                     </Link>
-                    <div>
-                        <h1 className="text-3xl md:text-4xl font-bold">{group.name}</h1>
-                        {group.description && (
-                            <p className="text-muted-foreground mt-2 text-lg">{group.description}</p>
-                        )}
+                    <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                            <h1 className="text-3xl md:text-4xl font-bold">{group.name}</h1>
+                            {group.description && (
+                                <p className="text-muted-foreground mt-2 text-lg">{group.description}</p>
+                            )}
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={Number(group.open_to_invites) === 1}
+                                    onChange={(e) => handleToggleInvites(e.target.checked)}
+                                    className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                />
+                                <span className="text-sm text-muted-foreground whitespace-nowrap">
+                                    Abrir a convites
+                                </span>
+                            </label>
+                            {Number(group.open_to_invites) === 1 && group.public_id && (
+                                <Button
+                                    onClick={handleCopyLink}
+                                    variant="outline"
+                                    className="gap-2 whitespace-nowrap"
+                                    size="sm"
+                                >
+                                    {linkCopied ? (
+                                        <>
+                                            <Copy className="h-4 w-4" />
+                                            Link copiado!
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Share2 className="h-4 w-4" />
+                                            Copiar Link
+                                        </>
+                                    )}
+                                </Button>
+                            )}
+                        </div>
                     </div>
                 </div>
 

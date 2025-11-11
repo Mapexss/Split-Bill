@@ -32,6 +32,8 @@ db.run(`
     description TEXT,
     created_by INTEGER NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    public_id TEXT UNIQUE,
+    open_to_invites INTEGER DEFAULT 0,
     FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
   )
 `);
@@ -100,6 +102,33 @@ try {
   db.run(`ALTER TABLE settlements ADD COLUMN expense_id INTEGER REFERENCES expenses(id) ON DELETE CASCADE`);
 } catch (e) {
   // Column already exists, ignore error
+}
+
+// Add public_id and open_to_invites columns to existing groups table if they don't exist
+// Note: SQLite doesn't support UNIQUE constraint in ALTER TABLE ADD COLUMN
+// We'll add the column first, then create a unique index if needed
+try {
+  db.run(`ALTER TABLE groups ADD COLUMN public_id TEXT`);
+  // Create unique index for public_id if it doesn't exist
+  try {
+    db.run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_groups_public_id ON groups(public_id) WHERE public_id IS NOT NULL`);
+  } catch (e) {
+    // Index might already exist, ignore
+  }
+} catch (e: any) {
+  // Column already exists, ignore error
+  if (!e?.message?.includes('duplicate column name')) {
+    console.warn("Warning adding public_id column:", e);
+  }
+}
+
+try {
+  db.run(`ALTER TABLE groups ADD COLUMN open_to_invites INTEGER DEFAULT 0`);
+} catch (e: any) {
+  // Column already exists, ignore error
+  if (!e?.message?.includes('duplicate column name')) {
+    console.warn("Warning adding open_to_invites column:", e);
+  }
 }
 
 // Create expense_changes table (audit log for expense edits)
