@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { UserPlus, Users } from "lucide-react";
+import { Check, UserPlus, Users } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
 interface Member {
@@ -12,10 +12,11 @@ interface Member {
 interface MemberListProps {
     members: Member[];
     groupId: string;
+    currentUserId: number | null;
     onMemberAdded: () => void;
 }
 
-export function MemberList({ members, groupId, onMemberAdded }: MemberListProps) {
+export function MemberList({ members, groupId, currentUserId, onMemberAdded }: MemberListProps) {
     const [showAddMember, setShowAddMember] = useState(false);
     const [memberUsername, setMemberUsername] = useState("");
     const [memberError, setMemberError] = useState("");
@@ -23,6 +24,8 @@ export function MemberList({ members, groupId, onMemberAdded }: MemberListProps)
     const [searching, setSearching] = useState(false);
     const [showResults, setShowResults] = useState(false);
     const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+    const [friends, setFriends] = useState<number[]>([]);
+    const [addingFriendId, setAddingFriendId] = useState<number | null>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
     const searchUsers = async (query: string) => {
@@ -34,7 +37,8 @@ export function MemberList({ members, groupId, onMemberAdded }: MemberListProps)
 
         setSearching(true);
         try {
-            const response = await fetch(`/api/users/search?q=${encodeURIComponent(query)}`);
+            // Buscar apenas amigos ao adicionar membros ao grupo
+            const response = await fetch(`/api/users/search?q=${encodeURIComponent(query)}&friendsOnly=true`);
             const data = await response.json();
 
             if (data.success) {
@@ -45,6 +49,23 @@ export function MemberList({ members, groupId, onMemberAdded }: MemberListProps)
             console.error("Erro ao buscar usuários:", err);
         } finally {
             setSearching(false);
+        }
+    };
+
+    useEffect(() => {
+        loadFriends();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    const loadFriends = async () => {
+        try {
+            const response = await fetch("/api/friends");
+            const data = await response.json();
+            if (data.success) {
+                setFriends(data.friends.map((f: { id: number }) => f.id));
+            }
+        } catch (error) {
+            console.error("Erro ao carregar amigos:", error);
         }
     };
 
@@ -226,16 +247,71 @@ export function MemberList({ members, groupId, onMemberAdded }: MemberListProps)
                         </div>
                     </form>
                 )}
-                {members.map((member) => (
-                    <div key={member.user_id} className="flex items-center gap-2 p-2">
-                        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                            <span className="text-sm font-medium text-primary">
-                                {member.username[0]?.toUpperCase()}
-                            </span>
+                {members.map((member) => {
+                    const isCurrentUser = member.user_id === currentUserId;
+                    const isFriend = friends.includes(member.user_id);
+                    const isAdding = addingFriendId === member.user_id;
+
+                    return (
+                        <div key={member.user_id} className="flex items-center justify-between p-2 rounded-lg hover:bg-accent/50 transition-colors">
+                            <div className="flex items-center gap-2 flex-1">
+                                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                    <span className="text-sm font-medium text-primary">
+                                        {member.username[0]?.toUpperCase()}
+                                    </span>
+                                </div>
+                                <span className="text-sm">{member.username}</span>
+                            </div>
+                            {!isCurrentUser && !isFriend && (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={async () => {
+                                        setAddingFriendId(member.user_id);
+                                        try {
+                                            const response = await fetch("/api/friends", {
+                                                method: "POST",
+                                                headers: { "Content-Type": "application/json" },
+                                                body: JSON.stringify({ username: member.username }),
+                                            });
+
+                                            const data = await response.json();
+                                            if (data.success) {
+                                                await loadFriends();
+                                            } else {
+                                                alert(data.error || "Erro ao adicionar amigo");
+                                            }
+                                        } catch (err) {
+                                            alert("Erro ao adicionar amigo");
+                                        } finally {
+                                            setAddingFriendId(null);
+                                        }
+                                    }}
+                                    disabled={isAdding}
+                                    className="gap-1 text-xs"
+                                >
+                                    {isAdding ? (
+                                        <>
+                                            <div className="h-3 w-3 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                                            Adicionando...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <UserPlus className="h-3 w-3" />
+                                            Adicionar
+                                        </>
+                                    )}
+                                </Button>
+                            )}
+                            {!isCurrentUser && isFriend && (
+                                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                    <Check className="h-3 w-3" />
+                                    <span>Amigo</span>
+                                </div>
+                            )}
                         </div>
-                        <span className="text-sm">{member.username}</span>
-                    </div>
-                ))}
+                    );
+                })}
             </CardContent>
         </Card>
     );

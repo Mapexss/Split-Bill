@@ -63,7 +63,7 @@ export function getUserGroups(userId: number): Group[] {
         .query(
             `SELECT DISTINCT g.* FROM groups g
        INNER JOIN group_members gm ON g.id = gm.group_id
-       WHERE gm.user_id = ?
+       WHERE gm.user_id = ? AND g.deleted_at IS NULL
        ORDER BY g.created_at DESC`
         )
         .all(userId) as Group[];
@@ -72,21 +72,23 @@ export function getUserGroups(userId: number): Group[] {
 // Obter detalhes do grupo
 export function getGroup(groupId: number): Group | null {
     return db
-        .query("SELECT * FROM groups WHERE id = ?")
+        .query("SELECT * FROM groups WHERE id = ? AND deleted_at IS NULL")
         .get(groupId) as Group | null;
 }
 
 // Obter grupo por public_id
 export function getGroupByPublicId(publicId: string): Group | null {
     return db
-        .query("SELECT * FROM groups WHERE public_id = ?")
+        .query("SELECT * FROM groups WHERE public_id = ? AND deleted_at IS NULL")
         .get(publicId) as Group | null;
 }
 
 // Verificar se usuário é membro do grupo
 export function isGroupMember(groupId: number, userId: number): boolean {
     const result = db
-        .query("SELECT id FROM group_members WHERE group_id = ? AND user_id = ?")
+        .query(`SELECT gm.id FROM group_members gm
+                INNER JOIN groups g ON gm.group_id = g.id
+                WHERE gm.group_id = ? AND gm.user_id = ? AND g.deleted_at IS NULL`)
         .get(groupId, userId);
     return result !== null;
 }
@@ -98,7 +100,8 @@ export function getGroupMembers(groupId: number): GroupMember[] {
             `SELECT gm.*, u.username 
        FROM group_members gm
        INNER JOIN users u ON gm.user_id = u.id
-       WHERE gm.group_id = ?
+       INNER JOIN groups g ON gm.group_id = g.id
+       WHERE gm.group_id = ? AND g.deleted_at IS NULL
        ORDER BY gm.joined_at`
         )
         .all(groupId) as GroupMember[];
@@ -153,7 +156,8 @@ export function getGroupExpenses(groupId: number): Expense[] {
             `SELECT e.*, u.username as paid_by_username
        FROM expenses e
        INNER JOIN users u ON e.paid_by = u.id
-       WHERE e.group_id = ?
+       INNER JOIN groups g ON e.group_id = g.id
+       WHERE e.group_id = ? AND g.deleted_at IS NULL
        ORDER BY e.date DESC, e.created_at DESC`
         )
         .all(groupId) as Expense[];
@@ -429,6 +433,34 @@ export function calculateDebtsWithDetails(groupId: number): DebtWithDetails[] {
     return result;
 }
 
+// Soft delete do grupo
+export function deleteGroup(groupId: number, userId: number): { success: boolean; error?: string } {
+    try {
+        // Verificar se o grupo existe e não está deletado
+        const group = db
+            .query("SELECT created_by FROM groups WHERE id = ? AND deleted_at IS NULL")
+            .get(groupId) as { created_by: number } | null;
+
+        if (!group) {
+            return { success: false, error: "Grupo não encontrado" };
+        }
+
+        // Verificar se o usuário é o criador do grupo
+        if (group.created_by !== userId) {
+            return { success: false, error: "Apenas o criador do grupo pode excluí-lo" };
+        }
+
+        // Atualizar deleted_at
+        db.query("UPDATE groups SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?")
+            .run(groupId);
+
+        return { success: true };
+    } catch (error) {
+        console.error("Erro ao deletar grupo:", error);
+        return { success: false, error: "Erro ao deletar grupo" };
+    }
+}
+
 // Registrar pagamento (settlement)
 export function addSettlement(
     groupId: number,
@@ -529,7 +561,8 @@ export function getGroupTransactions(groupId: number): Transaction[] {
             `SELECT e.id, e.description, e.amount, e.date, e.paid_by, u.username as paid_by_username, e.category
        FROM expenses e
        INNER JOIN users u ON e.paid_by = u.id
-       WHERE e.group_id = ?`
+       INNER JOIN groups g ON e.group_id = g.id
+       WHERE e.group_id = ? AND g.deleted_at IS NULL`
         )
         .all(groupId) as any[];
 
@@ -542,7 +575,8 @@ export function getGroupTransactions(groupId: number): Transaction[] {
        FROM settlements s
        INNER JOIN users uf ON s.from_user = uf.id
        INNER JOIN users ut ON s.to_user = ut.id
-       WHERE s.group_id = ?`
+       INNER JOIN groups g ON s.group_id = g.id
+       WHERE s.group_id = ? AND g.deleted_at IS NULL`
         )
         .all(groupId) as any[];
 

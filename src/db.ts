@@ -139,6 +139,23 @@ addColumnIfNotExists(
 );
 addColumnIfNotExists('groups', 'open_to_invites', 'INTEGER DEFAULT 0');
 
+// Migration: Add deleted_at to groups table for soft delete
+addColumnIfNotExists('groups', 'deleted_at', 'DATETIME');
+
+// Create friendships table (bidirectional friendships)
+db.run(`
+  CREATE TABLE IF NOT EXISTS friendships (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    friend_id INTEGER NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (friend_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE(user_id, friend_id),
+    CHECK(user_id != friend_id)
+  )
+`);
+
 // Create expense_changes table (audit log for expense edits)
 db.run(`
   CREATE TABLE IF NOT EXISTS expense_changes (
