@@ -15,4 +15,5 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
-            bash /var/www/minha-app/deploy.sh
+            cd /var/www/split-bill
+            ./deploy.sh
