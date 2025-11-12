@@ -97,39 +97,47 @@ db.run(`
   )
 `);
 
-// Add expense_id column to existing settlements table if it doesn't exist
-try {
-  db.run(`ALTER TABLE settlements ADD COLUMN expense_id INTEGER REFERENCES expenses(id) ON DELETE CASCADE`);
-} catch (e) {
-  // Column already exists, ignore error
-}
-
-// Add public_id and open_to_invites columns to existing groups table if they don't exist
-// Note: SQLite doesn't support UNIQUE constraint in ALTER TABLE ADD COLUMN
-// We'll add the column first, then create a unique index if needed
-try {
-  db.run(`ALTER TABLE groups ADD COLUMN public_id TEXT`);
-  // Create unique index for public_id if it doesn't exist
+// ===== MIGRATIONS =====
+// Helper function to safely add columns to existing tables
+function addColumnIfNotExists(
+  table: string,
+  column: string,
+  definition: string,
+  createIndex?: { name: string; columns: string; where?: string }
+) {
   try {
-    db.run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_groups_public_id ON groups(public_id) WHERE public_id IS NOT NULL`);
-  } catch (e) {
-    // Index might already exist, ignore
-  }
-} catch (e: any) {
-  // Column already exists, ignore error
-  if (!e?.message?.includes('duplicate column name')) {
-    console.warn("Warning adding public_id column:", e);
+    db.run(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+    if (createIndex) {
+      const whereClause = createIndex.where ? ` WHERE ${createIndex.where}` : '';
+      db.run(
+        `CREATE UNIQUE INDEX IF NOT EXISTS ${createIndex.name} ON ${table}(${createIndex.columns})${whereClause}`
+      );
+    }
+  } catch (e: any) {
+    // Column already exists or other error - ignore if it's a duplicate column error
+    const errorMsg = e?.message || String(e);
+    if (!errorMsg.includes('duplicate column name') && !errorMsg.includes('already exists')) {
+      console.warn(`Warning adding ${column} to ${table}:`, e);
+    }
   }
 }
 
-try {
-  db.run(`ALTER TABLE groups ADD COLUMN open_to_invites INTEGER DEFAULT 0`);
-} catch (e: any) {
-  // Column already exists, ignore error
-  if (!e?.message?.includes('duplicate column name')) {
-    console.warn("Warning adding open_to_invites column:", e);
+// Migration: Add expense_id to settlements table
+addColumnIfNotExists('settlements', 'expense_id', 'INTEGER');
+
+// Migration: Add public_id and open_to_invites to groups table
+// Note: SQLite doesn't support UNIQUE constraint in ALTER TABLE ADD COLUMN
+addColumnIfNotExists(
+  'groups',
+  'public_id',
+  'TEXT',
+  {
+    name: 'idx_groups_public_id',
+    columns: 'public_id',
+    where: 'public_id IS NOT NULL'
   }
-}
+);
+addColumnIfNotExists('groups', 'open_to_invites', 'INTEGER DEFAULT 0');
 
 // Create expense_changes table (audit log for expense edits)
 db.run(`
