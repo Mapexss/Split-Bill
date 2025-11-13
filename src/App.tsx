@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { Dashboard } from "./pages/Dashboard";
+import { Friends } from "./pages/Friends";
 import { GroupDetail } from "./pages/GroupDetail";
 import { Groups } from "./pages/Groups";
 import { JoinGroup } from "./pages/JoinGroup";
@@ -18,6 +19,7 @@ function App() {
           <Route path="/painel" element={<Dashboard />} />
           <Route path="/grupos" element={<Groups />} />
           <Route path="/grupos/:id" element={<GroupDetail />} />
+          <Route path="/amigos" element={<Friends />} />
           <Route path="/join-group/:public_id" element={<JoinGroup />} />
         </Routes>
       </BrowserRouter>

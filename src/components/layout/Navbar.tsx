@@ -6,6 +6,7 @@ import {
     Menu,
     Moon,
     Sun,
+    UserPlus,
     Users,
     X,
 } from "lucide-react";
@@ -38,6 +39,7 @@ export function Navbar({ username }: NavbarProps) {
     const navLinks = [
         { path: "/painel", label: "Painel", icon: Home },
         { path: "/grupos", label: "Grupos", icon: Users },
+        { path: "/amigos", label: "Amigos", icon: UserPlus },
     ];
 
     return (
@@ -62,8 +64,8 @@ export function Navbar({ username }: NavbarProps) {
                                     key={link.path}
                                     to={link.path}
                                     className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors ${isActive(link.path)
-                                            ? "bg-primary text-primary-foreground"
-                                            : "text-foreground/70 hover:text-foreground hover:bg-accent"
+                                        ? "bg-primary text-primary-foreground"
+                                        : "text-foreground/70 hover:text-foreground hover:bg-accent"
                                         }`}
                                 >
                                     <Icon className="h-4 w-4" />
@@ -136,8 +138,8 @@ export function Navbar({ username }: NavbarProps) {
                                     to={link.path}
                                     onClick={() => setMobileMenuOpen(false)}
                                     className={`flex items-center gap-2 px-4 py-3 rounded-md transition-colors ${isActive(link.path)
-                                            ? "bg-primary text-primary-foreground"
-                                            : "text-foreground/70 hover:text-foreground hover:bg-accent"
+                                        ? "bg-primary text-primary-foreground"
+                                        : "text-foreground/70 hover:text-foreground hover:bg-accent"
                                         }`}
                                 >
                                     <Icon className="h-5 w-5" />

@@ -5,9 +5,19 @@ import { ExpenseEditForm } from "@/components/group/ExpenseEditForm";
 import { ExpenseList } from "@/components/group/ExpenseList";
 import { MemberList } from "@/components/group/MemberList";
 import { Layout } from "@/components/layout";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, Copy, Plus, Share2 } from "lucide-react";
+import { ArrowLeft, Copy, Plus, Share2, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
@@ -17,6 +27,7 @@ interface Group {
     description?: string;
     public_id?: string;
     open_to_invites?: number;
+    created_by?: number;
 }
 
 interface Member {
@@ -85,6 +96,8 @@ export function GroupDetail() {
     // UI states
     const [showAddExpense, setShowAddExpense] = useState(false);
     const [editingExpenseId, setEditingExpenseId] = useState<number | null>(null);
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     useEffect(() => {
         loadCurrentUser();
@@ -195,6 +208,31 @@ export function GroupDetail() {
         }
     };
 
+    const handleDeleteGroup = async () => {
+        if (!id) return;
+
+        setIsDeleting(true);
+        try {
+            const response = await fetch(`/api/groups/${id}`, {
+                method: "DELETE",
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                navigate("/grupos");
+            } else {
+                console.error("Erro ao deletar grupo:", data.error);
+                alert(data.error || "Erro ao deletar grupo");
+            }
+        } catch (error) {
+            console.error("Erro ao deletar grupo:", error);
+            alert("Erro ao deletar grupo");
+        } finally {
+            setIsDeleting(false);
+            setShowDeleteDialog(false);
+        }
+    };
+
     if (loading) {
         return (
             <Layout>
@@ -263,6 +301,17 @@ export function GroupDetail() {
                                     )}
                                 </Button>
                             )}
+                            {group.created_by === currentUserId && (
+                                <Button
+                                    onClick={() => setShowDeleteDialog(true)}
+                                    variant="destructive"
+                                    className="gap-2 whitespace-nowrap"
+                                    size="sm"
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                    Excluir Grupo
+                                </Button>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -273,6 +322,7 @@ export function GroupDetail() {
                         <MemberList
                             members={members}
                             groupId={id!}
+                            currentUserId={currentUserId}
                             onMemberAdded={loadGroupData}
                         />
 
@@ -334,6 +384,31 @@ export function GroupDetail() {
                     </div>
                 </div>
             </div>
+
+            {/* Delete Confirmation Dialog */}
+            <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Excluir Grupo</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Tem certeza que deseja excluir o grupo "{group.name}"? Esta ação não pode ser desfeita.
+                            O grupo será removido da sua lista, mas os dados serão mantidos no banco de dados.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => !isDeleting && setShowDeleteDialog(false)}>
+                            Cancelar
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleDeleteGroup}
+                            disabled={isDeleting}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            {isDeleting ? "Excluindo..." : "Excluir"}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </Layout>
     );
 }

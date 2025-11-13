@@ -10,6 +10,12 @@ import {
 import "./db"; // Initialize database
 import { db } from "./db";
 import {
+    addFriend,
+    getUserFriends,
+    removeFriend,
+    searchFriends,
+} from "./friends";
+import {
     addDebtSettlement,
     addExpense,
     addExpenseSettlement,
@@ -19,6 +25,7 @@ import {
     calculateDebtsWithDetails,
     calculateGroupBalances,
     createGroup,
+    deleteGroup,
     getExpenseChanges,
     getExpenseSplits,
     getGroup,
@@ -151,6 +158,7 @@ const app = new Elysia()
         }
 
         const searchTerm = (query.q as string) || "";
+        const friendsOnly = (query.friendsOnly as string) === "true";
 
         // Normalizar: remover acentos, lowercase, remover caracteres especiais
         const normalizeText = (text: string) => {
@@ -167,7 +175,13 @@ const app = new Elysia()
 
         const normalizedSearch = normalizeText(searchTerm);
 
-        // Buscar usuários cujo username normalizado contenha o termo
+        // Se friendsOnly for true, buscar apenas amigos
+        if (friendsOnly) {
+            const friends = searchFriends(userId, searchTerm);
+            return { success: true, users: friends };
+        }
+
+        // Caso contrário, buscar todos os usuários
         const users = db
             .query("SELECT id, username FROM users LIMIT 50")
             .all() as { id: number; username: string }[];
@@ -180,6 +194,71 @@ const app = new Elysia()
             .slice(0, 10);
 
         return { success: true, users: filtered };
+    })
+    // ===== AMIGOS =====
+    // Listar amigos do usuário
+    .get("/api/friends", ({ cookie }) => {
+        const sessionId = cookie.session?.value;
+        if (!sessionId || typeof sessionId !== 'string') {
+            return { success: false, error: "Não autenticado" };
+        }
+
+        const userId = getUserFromSession(sessionId);
+        if (!userId) {
+            return { success: false, error: "Sessão inválida" };
+        }
+
+        const friends = getUserFriends(userId);
+        return { success: true, friends };
+    })
+    // Adicionar amigo
+    .post("/api/friends", ({ body, cookie }) => {
+        const sessionId = cookie.session?.value;
+        if (!sessionId || typeof sessionId !== 'string') {
+            return { success: false, error: "Não autenticado" };
+        }
+
+        const userId = getUserFromSession(sessionId);
+        if (!userId) {
+            return { success: false, error: "Sessão inválida" };
+        }
+
+        const { username } = body as { username: string };
+        if (!username) {
+            return { success: false, error: "Nome de usuário é obrigatório" };
+        }
+
+        // Encontrar usuário pelo nome
+        const user = db
+            .query("SELECT id FROM users WHERE username = ?")
+            .get(username) as { id: number } | null;
+
+        if (!user) {
+            return { success: false, error: "Usuário não encontrado" };
+        }
+
+        const result = addFriend(userId, user.id);
+        return result;
+    })
+    // Remover amigo
+    .delete("/api/friends/:id", ({ params, cookie }) => {
+        const sessionId = cookie.session?.value;
+        if (!sessionId || typeof sessionId !== 'string') {
+            return { success: false, error: "Não autenticado" };
+        }
+
+        const userId = getUserFromSession(sessionId);
+        if (!userId) {
+            return { success: false, error: "Sessão inválida" };
+        }
+
+        const friendId = parseInt(params.id);
+        if (isNaN(friendId)) {
+            return { success: false, error: "ID inválido" };
+        }
+
+        const result = removeFriend(userId, friendId);
+        return result;
     })
     // ===== GRUPOS =====
     // Criar grupo
@@ -335,6 +414,31 @@ const app = new Elysia()
                 success: false,
                 error: error?.message || String(error) || "Erro ao atualizar configuração"
             };
+        }
+    })
+    // Deletar grupo (soft delete)
+    .delete("/api/groups/:id", ({ params, cookie }) => {
+        const sessionId = cookie.session?.value;
+        if (!sessionId || typeof sessionId !== 'string') {
+            return { success: false, error: "Não autenticado" };
+        }
+
+        const userId = getUserFromSession(sessionId);
+        if (!userId) {
+            return { success: false, error: "Sessão inválida" };
+        }
+
+        const groupId = parseInt(params.id);
+
+        try {
+            const result = deleteGroup(groupId, userId);
+            if (!result.success) {
+                return { success: false, error: result.error || "Erro ao deletar grupo" };
+            }
+
+            return { success: true };
+        } catch (error) {
+            return { success: false, error: "Erro ao deletar grupo" };
         }
     })
     // ===== DESPESAS =====
