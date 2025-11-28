@@ -104,3 +104,31 @@ export function deleteSession(sessionId: string): void {
     db.query("DELETE FROM sessions WHERE id = ?").run(sessionId);
 }
 
+// Reset password
+export async function resetPassword(
+    username: string,
+    newPassword: string
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        // Find user
+        const user = db
+            .query("SELECT id FROM users WHERE username = ?")
+            .get(username) as { id: number } | null;
+
+        if (!user) {
+            return { success: false, error: "Usuário não encontrado" };
+        }
+
+        // Hash new password
+        const hashedPassword = await hashPassword(newPassword);
+
+        // Update password
+        db.query("UPDATE users SET password = ? WHERE id = ?").run(hashedPassword, user.id);
+
+        return { success: true };
+    } catch (error) {
+        console.error("Reset password error:", error);
+        return { success: false, error: "Falha ao resetar senha" };
+    }
+}
+

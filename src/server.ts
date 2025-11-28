@@ -6,6 +6,7 @@ import {
     getUserFromSession,
     loginUser,
     registerUser,
+    resetPassword,
 } from "./auth";
 import "./db"; // Initialize database
 import { db } from "./db";
@@ -144,6 +145,72 @@ const app = new Elysia()
         }
 
         return { success: true };
+    })
+    // ===== RESETAR SENHA =====
+    .post("/api/reset-password", async ({ body, request }) => {
+        const { username, newPassword, code } = body as {
+            username: string;
+            newPassword: string;
+            code: string;
+        };
+
+        // Validate input
+        if (!username || !newPassword || !code) {
+            return { success: false, error: "Todos os campos são obrigatórios" };
+        }
+
+        // Get reset code from environment
+        const envCode = process.env.PASSWORD_RESET_CODE;
+        if (!envCode) {
+            console.error("PASSWORD_RESET_CODE não configurado no .env");
+            return { success: false, error: "Erro de configuração do servidor" };
+        }
+
+        // Verify code
+        if (code !== envCode) {
+            return { success: false, error: "Código de segurança inválido" };
+        }
+
+        // Rate limiting: Check attempts in the last 24 hours
+        // Get IP from headers (X-Forwarded-For for proxies, or direct connection)
+        const forwardedFor = request.headers?.get("x-forwarded-for");
+        const realIp = request.headers?.get("x-real-ip");
+        let ipAddress = "unknown";
+        if (forwardedFor && typeof forwardedFor === "string" && forwardedFor.length > 0) {
+            ipAddress = forwardedFor.split(",")[0]?.trim() ?? "unknown";
+        } else if (realIp && typeof realIp === "string" && realIp.length > 0) {
+            ipAddress = realIp;
+        }
+
+        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+        const attempts = db
+            .query(
+                "SELECT COUNT(*) as count FROM password_reset_attempts WHERE ip_address = ? AND attempted_at > ?"
+            )
+            .get(ipAddress, oneDayAgo) as { count: number } | null;
+
+        const attemptCount = attempts?.count || 0;
+        if (attemptCount >= 3) {
+            return {
+                success: false,
+                error: "Limite de tentativas excedido. Tente novamente em 24 horas.",
+            };
+        }
+
+        // Record attempt
+        db.query(
+            "INSERT INTO password_reset_attempts (ip_address, attempted_at) VALUES (?, ?)"
+        ).run(ipAddress, new Date().toISOString());
+
+        // Reset password
+        const result = await resetPassword(username, newPassword);
+
+        if (result.success) {
+            return { success: true };
+        }
+
+        return { success: false, error: result.error || "Falha ao resetar senha" };
     })
     // ===== BUSCAR USUÁRIOS =====
     .get("/api/users/search", ({ query, cookie }) => {
@@ -820,6 +887,7 @@ const app = new Elysia()
             path === "/" ||
             path === "/entrar" ||
             path === "/registrar" ||
+            path === "/resetar-senha" ||
             path === "/painel" ||
             path === "/grupos" ||
             path.startsWith("/grupos/") ||
@@ -844,6 +912,10 @@ const app = new Elysia()
         return indexHtml;
     })
     .get("/registrar", ({ set }) => {
+        set.headers["content-type"] = "text/html; charset=utf-8";
+        return indexHtml;
+    })
+    .get("/resetar-senha", ({ set }) => {
         set.headers["content-type"] = "text/html; charset=utf-8";
         return indexHtml;
     })

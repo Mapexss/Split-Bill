@@ -95,7 +95,15 @@ export function Login() {
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="password">Senha</Label>
+                            <div className="flex items-center justify-between">
+                                <Label htmlFor="password">Senha</Label>
+                                <Link
+                                    to="/resetar-senha"
+                                    className="text-xs text-primary hover:underline"
+                                >
+                                    Esqueceu sua senha?
+                                </Link>
+                            </div>
                             <Input
                                 id="password"
                                 type="password"
