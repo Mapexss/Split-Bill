@@ -171,5 +171,20 @@ db.run(`
   )
 `);
 
+// Create password_reset_attempts table for rate limiting
+db.run(`
+  CREATE TABLE IF NOT EXISTS password_reset_attempts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ip_address TEXT NOT NULL,
+    attempted_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+
+// Create index for faster queries
+db.run(`
+  CREATE INDEX IF NOT EXISTS idx_password_reset_attempts_ip_date 
+  ON password_reset_attempts(ip_address, attempted_at)
+`);
+
 console.log("Database initialized successfully");
 

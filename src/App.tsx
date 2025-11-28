@@ -7,6 +7,7 @@ import { Groups } from "./pages/Groups";
 import { JoinGroup } from "./pages/JoinGroup";
 import { Login } from "./pages/Login";
 import { Register } from "./pages/Register";
+import { ResetPassword } from "./pages/ResetPassword";
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
           <Route path="/" element={<Navigate to="/painel" replace />} />
           <Route path="/entrar" element={<Login />} />
           <Route path="/registrar" element={<Register />} />
+          <Route path="/resetar-senha" element={<ResetPassword />} />
           <Route path="/painel" element={<Dashboard />} />
           <Route path="/grupos" element={<Groups />} />
           <Route path="/grupos/:id" element={<GroupDetail />} />
