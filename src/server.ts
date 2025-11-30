@@ -182,7 +182,7 @@ const app = new Elysia()
             ipAddress = realIp;
         }
 
-        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        /* const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
         const attempts = db
             .query(
@@ -191,12 +191,12 @@ const app = new Elysia()
             .get(ipAddress, oneDayAgo) as { count: number } | null;
 
         const attemptCount = attempts?.count || 0;
-        if (attemptCount >= 3) {
+        if (attemptCount >= 6) {
             return {
                 success: false,
                 error: "Limite de tentativas excedido. Tente novamente em 24 horas.",
             };
-        }
+        }*/
 
         // Record attempt
         db.query(

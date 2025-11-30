@@ -422,15 +422,73 @@ export function calculateDebtsWithDetails(groupId: number): DebtWithDetails[] {
         debt.expenses.push(expDebt);
     }
 
-    // Arredondar totais
-    const result = Array.from(debtMap.values())
-        .filter(debt => debt.amount > 0.01)
-        .map(debt => ({
-            ...debt,
-            amount: Math.round(debt.amount * 100) / 100,
-        }));
+    // Consolidar dívidas bidirecionais (calcular valor líquido)
+    const consolidatedDebts = new Map<string, DebtWithDetails>();
+    const processedPairs = new Set<string>();
 
-    return result;
+    for (const [key, debt] of debtMap.entries()) {
+        // Verificar se já processamos este par
+        const reverseKey = `${debt.to}-${debt.from}`;
+        const pairKey = debt.from < debt.to ? `${debt.from}-${debt.to}` : `${debt.to}-${debt.from}`;
+
+        if (processedPairs.has(pairKey)) {
+            continue; // Já processamos este par
+        }
+
+        processedPairs.add(pairKey);
+
+        // Verificar se há dívida na direção oposta
+        const reverseDebt = debtMap.get(reverseKey);
+
+        if (reverseDebt) {
+            // Há dívidas em ambas as direções - calcular valor líquido
+            const netAmount = debt.amount - reverseDebt.amount;
+
+            if (Math.abs(netAmount) > 0.01) {
+                // Determinar direção do valor líquido
+                if (netAmount > 0) {
+                    // A dívida líquida é de debt.from para debt.to
+                    // Ordenar despesas por data (mais recente primeiro)
+                    const allExpenses = [...debt.expenses, ...reverseDebt.expenses].sort(
+                        (a, b) => new Date(b.expenseDate).getTime() - new Date(a.expenseDate).getTime()
+                    );
+                    consolidatedDebts.set(key, {
+                        from: debt.from,
+                        fromUsername: debt.fromUsername,
+                        to: debt.to,
+                        toUsername: debt.toUsername,
+                        amount: Math.round(netAmount * 100) / 100,
+                        expenses: allExpenses,
+                    });
+                } else {
+                    // A dívida líquida é de reverseDebt.from para reverseDebt.to
+                    // Ordenar despesas por data (mais recente primeiro)
+                    const allExpenses = [...debt.expenses, ...reverseDebt.expenses].sort(
+                        (a, b) => new Date(b.expenseDate).getTime() - new Date(a.expenseDate).getTime()
+                    );
+                    consolidatedDebts.set(reverseKey, {
+                        from: reverseDebt.from,
+                        fromUsername: reverseDebt.fromUsername,
+                        to: reverseDebt.to,
+                        toUsername: reverseDebt.toUsername,
+                        amount: Math.round(Math.abs(netAmount) * 100) / 100,
+                        expenses: allExpenses,
+                    });
+                }
+            }
+            // Se netAmount <= 0.01, não adicionamos nada (dívidas se cancelam)
+        } else {
+            // Não há dívida na direção oposta, manter como está
+            consolidatedDebts.set(key, {
+                ...debt,
+                amount: Math.round(debt.amount * 100) / 100,
+            });
+        }
+    }
+
+    // Retornar apenas dívidas com valor > 0.01
+    return Array.from(consolidatedDebts.values())
+        .filter(debt => debt.amount > 0.01);
 }
 
 // Soft delete do grupo
